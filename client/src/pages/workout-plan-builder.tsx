@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, useLocation, useSearch } from "wouter";
 import { 
   ArrowLeft, Save, Loader2, Dumbbell, Plus, Trash2, Calendar, 
-  ChevronLeft, ChevronRight, Download, Share2, Copy, Check
+  ChevronLeft, ChevronRight, Download, Share2, Copy, Check, CheckCircle
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -32,6 +45,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { generateWorkoutPDF, downloadPDF, shareToWhatsApp } from "@/lib/pdf-generator";
+import { cn } from "@/lib/utils";
+import { EXERCISES_LIST } from "@/lib/exercises";
 import type { Client, WorkoutPlan, DayWorkout, Exercise } from "@shared/schema";
 
 const MONTH_NAMES = [
@@ -62,16 +77,72 @@ function ExerciseForm({
   onChange: (exercise: Exercise) => void;
   onRemove: () => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
+
+  const handleSelect = (currentValue: string) => {
+    onChange({ ...exercise, name: currentValue });
+    setOpen(false);
+  };
+
   return (
     <div className="flex flex-col gap-3 p-4 rounded-lg bg-muted/50 border border-border/50">
       <div className="flex items-start justify-between gap-2">
-        <Input
-          value={exercise.name}
-          onChange={(e) => onChange({ ...exercise, name: e.target.value })}
-          placeholder="Exercise name"
-          className="flex-1 font-medium"
-          data-testid={`input-exercise-name-${exercise.id}`}
-        />
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={open}
+              className="flex-1 justify-between font-medium"
+              data-testid={`input-exercise-name-${exercise.id}`}
+            >
+              {exercise.name || "Select exercise..."}
+              <Dumbbell className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[300px] p-0" align="start">
+            <Command>
+              <CommandInput
+                placeholder="Search exercise..."
+                value={searchValue}
+                onValueChange={setSearchValue}
+              />
+              <CommandList>
+                <CommandEmpty>
+                  <p className="p-2 text-sm text-muted-foreground">No exercise found.</p>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start h-auto p-2"
+                    onClick={() => handleSelect(searchValue)}
+                  >
+                    Use "{searchValue}"
+                  </Button>
+                </CommandEmpty>
+                {EXERCISES_LIST.map((group) => (
+                  <CommandGroup key={group.category} heading={group.category}>
+                    {group.items.map((item) => (
+                      <CommandItem
+                        key={item}
+                        value={item}
+                        onSelect={handleSelect}
+                      >
+                        <CheckCircle
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            exercise.name === item ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        {item}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                ))}
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+
         <Button 
           variant="ghost" 
           size="icon"
@@ -521,7 +592,7 @@ export default function WorkoutPlanBuilder() {
               <Select 
                 value={selectedMonth.toString()} 
                 onValueChange={(v) => setSelectedMonth(parseInt(v))}
-                disabled={isEditing}
+                disabled={!!isEditing}
               >
                 <SelectTrigger className="mt-1" data-testid="select-month">
                   <SelectValue />
@@ -540,7 +611,7 @@ export default function WorkoutPlanBuilder() {
               <Select 
                 value={selectedYear.toString()} 
                 onValueChange={(v) => setSelectedYear(parseInt(v))}
-                disabled={isEditing}
+                disabled={!!isEditing}
               >
                 <SelectTrigger className="mt-1" data-testid="select-year">
                   <SelectValue />
@@ -580,7 +651,7 @@ export default function WorkoutPlanBuilder() {
                       setSelectedMonth(m => m - 1);
                     }
                   }}
-                  disabled={isEditing}
+                  disabled={!!isEditing}
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
@@ -595,7 +666,7 @@ export default function WorkoutPlanBuilder() {
                       setSelectedMonth(m => m + 1);
                     }
                   }}
-                  disabled={isEditing}
+                  disabled={!!isEditing}
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
@@ -621,6 +692,7 @@ export default function WorkoutPlanBuilder() {
                 const isSelected = selectedDay === day.day;
                 return (
                   <button
+                    type="button"
                     key={day.day}
                     onClick={() => setSelectedDay(day.day)}
                     className={`
@@ -706,6 +778,7 @@ export default function WorkoutPlanBuilder() {
               const isSelected = copyTargetDays.includes(day.day);
               return (
                 <button
+                  type="button"
                   key={day.day}
                   onClick={() => {
                     if (isSelected) {
