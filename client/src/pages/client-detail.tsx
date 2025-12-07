@@ -177,12 +177,12 @@ export default function ClientDetail() {
   });
 
   const { data: workoutPlans = [] } = useQuery<WorkoutPlan[]>({
-    queryKey: ['/api/workout-plans', { clientId: params.id }],
+    queryKey: ['/api/workout-plans', `?clientId=${params.id}`],
     enabled: !!params.id,
   });
 
   const { data: dietPlans = [] } = useQuery<DietPlan[]>({
-    queryKey: ['/api/diet-plans', { clientId: params.id }],
+    queryKey: ['/api/diet-plans', `?clientId=${params.id}`],
     enabled: !!params.id,
   });
 
