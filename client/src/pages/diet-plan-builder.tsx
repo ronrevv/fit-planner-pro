@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, useLocation, useSearch } from "wouter";
 import { 
   ArrowLeft, Save, Loader2, Utensils, Plus, Trash2, Calendar, 
-  ChevronLeft, ChevronRight, Download, Share2, Copy, Check, Droplets
+  ChevronLeft, ChevronRight, Download, Share2, Copy, Check, Droplets, Wand2
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { generateDietPDF, downloadPDF, shareToWhatsApp } from "@/lib/pdf-generator";
+import { generateDailyMeals } from "@/lib/meals";
 import type { Client, DietPlan, DayDiet, Meal } from "@shared/schema";
 import { mealTypeLabels } from "@shared/schema";
 
@@ -155,10 +156,12 @@ function MealForm({
 
 function DayEditor({ 
   day, 
-  onChange 
+  onChange,
+  targetCalories
 }: { 
   day: DayDiet; 
   onChange: (day: DayDiet) => void;
+  targetCalories?: number;
 }) {
   const totalCalories = day.meals.reduce((sum, m) => sum + m.calories, 0);
   const totalProtein = day.meals.reduce((sum, m) => sum + m.protein, 0);
@@ -179,6 +182,17 @@ function DayEditor({
     onChange({
       ...day,
       meals: [...day.meals, newMeal],
+    });
+  };
+
+  const generateMeals = () => {
+    const meals = generateDailyMeals(targetCalories || 2000).map(m => ({
+      ...m,
+      id: crypto.randomUUID()
+    }));
+    onChange({
+      ...day,
+      meals: [...day.meals, ...meals]
     });
   };
 
@@ -255,15 +269,24 @@ function DayEditor({
         </div>
       </ScrollArea>
 
-      <Button 
-        variant="outline" 
-        className="w-full" 
-        onClick={addMeal}
-        data-testid={`button-add-meal-day-${day.day}`}
-      >
-        <Plus className="h-4 w-4 mr-2" />
-        Add Meal
-      </Button>
+      <div className="grid grid-cols-2 gap-2">
+        <Button
+          variant="outline"
+          onClick={addMeal}
+          data-testid={`button-add-meal-day-${day.day}`}
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add Meal
+        </Button>
+        <Button
+          variant="outline"
+          onClick={generateMeals}
+          data-testid={`button-generate-meals-${day.day}`}
+        >
+          <Wand2 className="h-4 w-4 mr-2" />
+          Auto Generate
+        </Button>
+      </div>
 
       <div>
         <Label className="text-sm text-muted-foreground">Day Notes</Label>
@@ -595,7 +618,7 @@ export default function DietPlanBuilder() {
               <Select 
                 value={selectedMonth.toString()} 
                 onValueChange={(v) => setSelectedMonth(parseInt(v))}
-                disabled={isEditing}
+                disabled={!!isEditing}
               >
                 <SelectTrigger className="mt-1" data-testid="select-month">
                   <SelectValue />
@@ -614,7 +637,7 @@ export default function DietPlanBuilder() {
               <Select 
                 value={selectedYear.toString()} 
                 onValueChange={(v) => setSelectedYear(parseInt(v))}
-                disabled={isEditing}
+                disabled={!!isEditing}
               >
                 <SelectTrigger className="mt-1" data-testid="select-year">
                   <SelectValue />
@@ -654,7 +677,7 @@ export default function DietPlanBuilder() {
                       setSelectedMonth(m => m - 1);
                     }
                   }}
-                  disabled={isEditing}
+                  disabled={!!isEditing}
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
@@ -669,7 +692,7 @@ export default function DietPlanBuilder() {
                       setSelectedMonth(m => m + 1);
                     }
                   }}
-                  disabled={isEditing}
+                  disabled={!!isEditing}
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
@@ -698,6 +721,7 @@ export default function DietPlanBuilder() {
                 
                 return (
                   <button
+                    type="button"
                     key={day.day}
                     onClick={() => setSelectedDay(day.day)}
                     className={`
@@ -764,7 +788,11 @@ export default function DietPlanBuilder() {
           </CardHeader>
           <CardContent>
             {currentDay && (
-              <DayEditor day={currentDay} onChange={handleDayChange} />
+              <DayEditor
+                day={currentDay}
+                onChange={handleDayChange}
+                targetCalories={targetCalories}
+              />
             )}
           </CardContent>
         </Card>
@@ -785,6 +813,7 @@ export default function DietPlanBuilder() {
               const isSelected = copyTargetDays.includes(day.day);
               return (
                 <button
+                  type="button"
                   key={day.day}
                   onClick={() => {
                     if (isSelected) {
