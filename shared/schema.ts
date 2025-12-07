@@ -12,9 +12,10 @@ export const clientSchema = z.object({
   goal: z.enum(["weight_loss", "muscle_gain", "maintenance", "endurance", "flexibility"]),
   fitnessLevel: z.enum(["beginner", "intermediate", "advanced"]),
   notes: z.string().optional(),
+  portalKey: z.string().optional(),
 });
 
-export const insertClientSchema = clientSchema.omit({ id: true });
+export const insertClientSchema = clientSchema.omit({ id: true, portalKey: true });
 export type Client = z.infer<typeof clientSchema>;
 export type InsertClient = z.infer<typeof insertClientSchema>;
 
@@ -92,6 +93,34 @@ export const dietPlanSchema = z.object({
 export const insertDietPlanSchema = dietPlanSchema.omit({ id: true });
 export type DietPlan = z.infer<typeof dietPlanSchema>;
 export type InsertDietPlan = z.infer<typeof insertDietPlanSchema>;
+
+// Progress Schema
+export const progressSchema = z.object({
+  id: z.string(),
+  clientId: z.string(),
+  date: z.number(), // timestamp
+  weight: z.number().min(20).max(300),
+  notes: z.string().optional(),
+});
+
+export const insertProgressSchema = progressSchema.omit({ id: true });
+export type Progress = z.infer<typeof progressSchema>;
+export type InsertProgress = z.infer<typeof insertProgressSchema>;
+
+// Daily Log Schema (Client Check-in)
+export const dailyLogSchema = z.object({
+  id: z.string(),
+  clientId: z.string(),
+  date: z.number(), // timestamp
+  completedExercises: z.array(z.string()), // exercise IDs
+  completedMeals: z.array(z.string()), // meal IDs
+  mood: z.enum(["great", "good", "neutral", "tired", "bad"]).optional(),
+  notes: z.string().optional(),
+});
+
+export const insertDailyLogSchema = dailyLogSchema.omit({ id: true });
+export type DailyLog = z.infer<typeof dailyLogSchema>;
+export type InsertDailyLog = z.infer<typeof insertDailyLogSchema>;
 
 // User Schema (for trainers)
 export const users = {

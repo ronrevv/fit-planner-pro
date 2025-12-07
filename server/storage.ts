@@ -2,7 +2,9 @@ import {
   type Client, type InsertClient,
   type WorkoutPlan, type InsertWorkoutPlan,
   type DietPlan, type InsertDietPlan,
-  type User, type InsertUser 
+  type User, type InsertUser,
+  type Progress, type InsertProgress,
+  type DailyLog, type InsertDailyLog
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -15,9 +17,19 @@ export interface IStorage {
   // Clients
   getAllClients(): Promise<Client[]>;
   getClient(id: string): Promise<Client | undefined>;
+  getClientByPortalKey(key: string): Promise<Client | undefined>;
   createClient(client: InsertClient): Promise<Client>;
   updateClient(id: string, client: Partial<InsertClient>): Promise<Client | undefined>;
   deleteClient(id: string): Promise<boolean>;
+
+  // Progress
+  getProgressByClient(clientId: string): Promise<Progress[]>;
+  addProgress(progress: InsertProgress): Promise<Progress>;
+
+  // Daily Logs
+  getDailyLogsByClient(clientId: string): Promise<DailyLog[]>;
+  getDailyLog(clientId: string, date: number): Promise<DailyLog | undefined>;
+  createOrUpdateDailyLog(log: InsertDailyLog): Promise<DailyLog>;
 
   // Workout Plans
   getAllWorkoutPlans(): Promise<WorkoutPlan[]>;
@@ -41,12 +53,16 @@ export class MemStorage implements IStorage {
   private clients: Map<string, Client>;
   private workoutPlans: Map<string, WorkoutPlan>;
   private dietPlans: Map<string, DietPlan>;
+  private progress: Map<string, Progress>;
+  private dailyLogs: Map<string, DailyLog>;
 
   constructor() {
     this.users = new Map();
     this.clients = new Map();
     this.workoutPlans = new Map();
     this.dietPlans = new Map();
+    this.progress = new Map();
+    this.dailyLogs = new Map();
   }
 
   // Users
@@ -76,9 +92,15 @@ export class MemStorage implements IStorage {
     return this.clients.get(id);
   }
 
+  async getClientByPortalKey(key: string): Promise<Client | undefined> {
+    return Array.from(this.clients.values()).find(c => c.portalKey === key);
+  }
+
   async createClient(insertClient: InsertClient): Promise<Client> {
     const id = randomUUID();
-    const client: Client = { ...insertClient, id };
+    // Generate a simple portal key if not provided (normally server-side generation logic)
+    const portalKey = randomUUID().split('-')[0];
+    const client: Client = { ...insertClient, id, portalKey };
     this.clients.set(id, client);
     return client;
   }
@@ -90,6 +112,52 @@ export class MemStorage implements IStorage {
     const updatedClient: Client = { ...client, ...updates };
     this.clients.set(id, updatedClient);
     return updatedClient;
+  }
+
+  // Progress
+  async getProgressByClient(clientId: string): Promise<Progress[]> {
+    return Array.from(this.progress.values())
+      .filter(p => p.clientId === clientId)
+      .sort((a, b) => b.date - a.date);
+  }
+
+  async addProgress(insertProgress: InsertProgress): Promise<Progress> {
+    const id = randomUUID();
+    const progress: Progress = { ...insertProgress, id };
+    this.progress.set(id, progress);
+    return progress;
+  }
+
+  // Daily Logs
+  async getDailyLogsByClient(clientId: string): Promise<DailyLog[]> {
+    return Array.from(this.dailyLogs.values())
+      .filter(l => l.clientId === clientId)
+      .sort((a, b) => b.date - a.date);
+  }
+
+  async getDailyLog(clientId: string, date: number): Promise<DailyLog | undefined> {
+    // Basic date matching (start of day) logic would be better in real app
+    return Array.from(this.dailyLogs.values()).find(
+      l => l.clientId === clientId && l.date === date
+    );
+  }
+
+  async createOrUpdateDailyLog(insertLog: InsertDailyLog): Promise<DailyLog> {
+    // Check if log exists for this client/date
+    const existing = Array.from(this.dailyLogs.values()).find(
+      l => l.clientId === insertLog.clientId && l.date === insertLog.date
+    );
+
+    if (existing) {
+      const updated = { ...existing, ...insertLog };
+      this.dailyLogs.set(existing.id, updated);
+      return updated;
+    }
+
+    const id = randomUUID();
+    const log: DailyLog = { ...insertLog, id };
+    this.dailyLogs.set(id, log);
+    return log;
   }
 
   async deleteClient(id: string): Promise<boolean> {

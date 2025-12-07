@@ -4,7 +4,9 @@ import { storage } from "./storage";
 import { 
   insertClientSchema, 
   insertWorkoutPlanSchema, 
-  insertDietPlanSchema 
+  insertDietPlanSchema,
+  insertProgressSchema,
+  insertDailyLogSchema
 } from "@shared/schema";
 
 export async function registerRoutes(
@@ -12,6 +14,87 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   
+  // ==================== PORTAL ====================
+
+  // Get client by portal key
+  app.get("/api/portal/:key", async (req, res) => {
+    try {
+      const client = await storage.getClientByPortalKey(req.params.key);
+      if (!client) {
+        return res.status(404).json({ message: "Invalid portal key" });
+      }
+      res.json(client);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to load portal" });
+    }
+  });
+
+  // ==================== PROGRESS & LOGS ====================
+
+  // Get progress for a client
+  app.get("/api/clients/:id/progress", async (req, res) => {
+    try {
+      const progress = await storage.getProgressByClient(req.params.id);
+      res.json(progress);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch progress" });
+    }
+  });
+
+  // Add progress entry
+  app.post("/api/clients/:id/progress", async (req, res) => {
+    try {
+      const parseResult = insertProgressSchema.safeParse({
+        ...req.body,
+        clientId: req.params.id
+      });
+
+      if (!parseResult.success) {
+        return res.status(400).json({
+          message: "Invalid progress data",
+          errors: parseResult.error.errors
+        });
+      }
+
+      const progress = await storage.addProgress(parseResult.data);
+      res.status(201).json(progress);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to add progress" });
+    }
+  });
+
+  // Get daily logs for a client
+  app.get("/api/clients/:id/logs", async (req, res) => {
+    try {
+      const logs = await storage.getDailyLogsByClient(req.params.id);
+      res.json(logs);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch logs" });
+    }
+  });
+
+  // Create/Update daily log
+  app.post("/api/clients/:id/logs", async (req, res) => {
+    try {
+      const parseResult = insertDailyLogSchema.safeParse({
+        ...req.body,
+        clientId: req.params.id
+      });
+
+      if (!parseResult.success) {
+        return res.status(400).json({
+          message: "Invalid log data",
+          errors: parseResult.error.errors
+        });
+      }
+
+      const log = await storage.createOrUpdateDailyLog(parseResult.data);
+      res.json(log);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update daily log" });
+    }
+  });
+
   // ==================== CLIENTS ====================
   
   // Get all clients

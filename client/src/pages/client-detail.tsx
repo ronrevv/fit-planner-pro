@@ -3,7 +3,7 @@ import { useParams, useLocation, Link } from "wouter";
 import { 
   ArrowLeft, Edit, Trash2, Dumbbell, Utensils, FileText, Download, 
   Phone, Mail, Target, Activity, Scale, Ruler, Calendar, Plus,
-  Share2, Loader2, MoreVertical
+  Share2, Loader2, MoreVertical, TrendingUp, Link as LinkIcon
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,11 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+} from 'recharts';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,12 +33,22 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { generateWorkoutPDF, generateDietPDF, downloadPDF, shareToWhatsApp } from "@/lib/pdf-generator";
-import type { Client, WorkoutPlan, DietPlan } from "@shared/schema";
+import type { Client, WorkoutPlan, DietPlan, Progress } from "@shared/schema";
 import { goalLabels, fitnessLevelLabels } from "@shared/schema";
 import { useState } from "react";
+import { format } from "date-fns";
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -171,18 +186,25 @@ export default function ClientDetail() {
   const { toast } = useToast();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [planToDelete, setPlanToDelete] = useState<{ id: string; type: 'workout' | 'diet' } | null>(null);
+  const [weightDialogOpen, setWeightDialogOpen] = useState(false);
+  const [newWeight, setNewWeight] = useState("");
 
   const { data: client, isLoading: clientLoading } = useQuery<Client>({
     queryKey: ['/api/clients', params.id],
   });
 
   const { data: workoutPlans = [] } = useQuery<WorkoutPlan[]>({
-    queryKey: ['/api/workout-plans', { clientId: params.id }],
+    queryKey: ['/api/workout-plans', `?clientId=${params.id}`],
     enabled: !!params.id,
   });
 
   const { data: dietPlans = [] } = useQuery<DietPlan[]>({
-    queryKey: ['/api/diet-plans', { clientId: params.id }],
+    queryKey: ['/api/diet-plans', `?clientId=${params.id}`],
+    enabled: !!params.id,
+  });
+
+  const { data: progress = [] } = useQuery<Progress[]>({
+    queryKey: ['/api/clients', params.id, 'progress'],
     enabled: !!params.id,
   });
 
@@ -234,10 +256,39 @@ export default function ClientDetail() {
     setDeleteDialogOpen(true);
   };
 
+  const addWeightMutation = useMutation({
+    mutationFn: async (weight: number) => {
+      await apiRequest('POST', `/api/clients/${params.id}/progress`, {
+        date: Date.now(),
+        weight,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/clients', params.id, 'progress'] });
+      // Also update client weight for display
+      queryClient.invalidateQueries({ queryKey: ['/api/clients', params.id] });
+      toast({
+        title: "Progress logged",
+        description: "Weight entry added successfully.",
+      });
+      setWeightDialogOpen(false);
+      setNewWeight("");
+    },
+  });
+
   const confirmDeletePlan = () => {
     if (planToDelete) {
       deletePlanMutation.mutate(planToDelete);
     }
+  };
+
+  const copyPortalLink = () => {
+    const link = `${window.location.origin}/portal/${client?.portalKey}`;
+    navigator.clipboard.writeText(link);
+    toast({
+      title: "Link copied",
+      description: "Client portal link copied to clipboard.",
+    });
   };
 
   if (clientLoading) {
@@ -297,6 +348,14 @@ export default function ClientDetail() {
   const clientWorkoutPlans = workoutPlans.filter(p => p.clientId === params.id);
   const clientDietPlans = dietPlans.filter(p => p.clientId === params.id);
 
+  // Prepare chart data
+  const chartData = [...progress]
+    .sort((a, b) => a.date - b.date)
+    .map(p => ({
+      date: format(new Date(p.date), 'MMM d'),
+      weight: p.weight,
+    }));
+
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       {/* Header */}
@@ -318,6 +377,14 @@ export default function ClientDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={copyPortalLink}
+            data-testid="button-copy-portal"
+          >
+            <LinkIcon className="h-4 w-4 mr-2" />
+            Portal Link
+          </Button>
           <Link href={`/clients/${params.id}/edit`}>
             <Button variant="outline" data-testid="button-edit-client">
               <Edit className="h-4 w-4 mr-2" />
@@ -433,6 +500,10 @@ export default function ClientDetail() {
                 </Badge>
               )}
             </TabsTrigger>
+            <TabsTrigger value="analytics" className="gap-2" data-testid="tab-analytics">
+              <TrendingUp className="h-4 w-4" />
+              Analytics
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -494,6 +565,126 @@ export default function ClientDetail() {
               ))}
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Weight Progress</CardTitle>
+                    <CardDescription>Track weight changes over time</CardDescription>
+                  </div>
+                  <Dialog open={weightDialogOpen} onOpenChange={setWeightDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Log Weight
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Log Weight</DialogTitle>
+                        <DialogDescription>
+                          Enter current weight in kg.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                          <Label>Weight (kg)</Label>
+                          <Input
+                            type="number"
+                            value={newWeight}
+                            onChange={(e) => setNewWeight(e.target.value)}
+                            placeholder="e.g. 75.5"
+                          />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button
+                          onClick={() => addWeightMutation.mutate(parseFloat(newWeight))}
+                          disabled={!newWeight || isNaN(parseFloat(newWeight))}
+                        >
+                          Save Entry
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {chartData.length > 0 ? (
+                  <div className="h-[300px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis
+                          dataKey="date"
+                          stroke="#888888"
+                          fontSize={12}
+                          tickLine={false}
+                          axisLine={false}
+                        />
+                        <YAxis
+                          stroke="#888888"
+                          fontSize={12}
+                          tickLine={false}
+                          axisLine={false}
+                          domain={['dataMin - 1', 'dataMax + 1']}
+                        />
+                        <Tooltip />
+                        <Line
+                          type="monotone"
+                          dataKey="weight"
+                          stroke="hsl(var(--primary))"
+                          strokeWidth={2}
+                          dot={{ r: 4, fill: "hsl(var(--primary))" }}
+                          activeDot={{ r: 6 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-[300px] text-muted-foreground">
+                    <TrendingUp className="h-8 w-8 mb-2 opacity-20" />
+                    <p>No progress data yet</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Statistics</CardTitle>
+                <CardDescription>Overall progress summary</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Starting Weight</p>
+                  <p className="text-2xl font-bold">{chartData.length > 0 ? chartData[0].weight : client.weight} kg</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Current Weight</p>
+                  <p className="text-2xl font-bold">{chartData.length > 0 ? chartData[chartData.length - 1].weight : client.weight} kg</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Total Change</p>
+                  <p className={`text-2xl font-bold ${
+                    chartData.length > 0
+                      ? (chartData[chartData.length - 1].weight - chartData[0].weight) > 0
+                        ? "text-red-500"
+                        : "text-green-500"
+                      : ""
+                  }`}>
+                    {chartData.length > 0
+                      ? (chartData[chartData.length - 1].weight - chartData[0].weight).toFixed(1)
+                      : "0.0"} kg
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
 
