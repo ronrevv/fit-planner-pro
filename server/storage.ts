@@ -89,7 +89,13 @@ export class MemStorage implements IStorage {
   }
 
   async getClient(id: string): Promise<Client | undefined> {
-    return this.clients.get(id);
+    const client = this.clients.get(id);
+    if (client && !client.portalKey) {
+      // Lazy migration: add portalKey if missing
+      client.portalKey = randomUUID().split('-')[0];
+      this.clients.set(id, client);
+    }
+    return client;
   }
 
   async getClientByPortalKey(key: string): Promise<Client | undefined> {
