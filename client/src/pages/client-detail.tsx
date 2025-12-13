@@ -727,6 +727,38 @@ export default function ClientDetail() {
             </Card>
 
             <div className="space-y-4">
+              {progress.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Recent History</CardTitle>
+                    <CardDescription>Latest measurements & notes</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {progress.slice(0, 3).map((entry) => (
+                      <div key={entry.id} className="text-sm border-b pb-3 last:border-0 last:pb-0">
+                        <div className="flex justify-between font-medium mb-1">
+                          <span>{format(entry.date, "MMM d, yyyy")}</span>
+                          <span>{entry.weight} kg</span>
+                        </div>
+                        {entry.measurements && Object.keys(entry.measurements).length > 0 && (
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground my-2">
+                            {Object.entries(entry.measurements).map(([key, value]) => (
+                              <div key={key} className="flex justify-between">
+                                <span className="capitalize">{key}:</span>
+                                <span>{value} cm</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {entry.notes && (
+                          <p className="text-xs text-muted-foreground italic mt-1">"{entry.notes}"</p>
+                        )}
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+
               <Card>
                 <CardHeader>
                   <CardTitle>Statistics</CardTitle>
