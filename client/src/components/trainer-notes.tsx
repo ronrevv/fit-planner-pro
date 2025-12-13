@@ -16,6 +16,7 @@ export function TrainerNotes({ clientId }: { clientId: string }) {
 
   const { data: notes = [] } = useQuery<TrainerNote[]>({
     queryKey: ['/api/clients', clientId, 'notes'],
+    enabled: !!clientId,
   });
 
   const addNoteMutation = useMutation({

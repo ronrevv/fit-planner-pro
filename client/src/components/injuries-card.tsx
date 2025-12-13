@@ -37,6 +37,7 @@ export function InjuriesCard({ clientId }: { clientId: string }) {
 
   const { data: injuries = [] } = useQuery<Injury[]>({
     queryKey: ['/api/clients', clientId, 'injuries'],
+    enabled: !!clientId,
   });
 
   const addInjuryMutation = useMutation({
