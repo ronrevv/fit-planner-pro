@@ -4,7 +4,9 @@ import {
   type DietPlan, type InsertDietPlan,
   type User, type InsertUser,
   type Progress, type InsertProgress,
-  type DailyLog, type InsertDailyLog
+  type DailyLog, type InsertDailyLog,
+  type Injury, type InsertInjury,
+  type TrainerNote, type InsertTrainerNote
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -31,6 +33,15 @@ export interface IStorage {
   getDailyLog(clientId: string, date: number): Promise<DailyLog | undefined>;
   createOrUpdateDailyLog(log: InsertDailyLog): Promise<DailyLog>;
 
+  // Injuries
+  getInjuriesByClient(clientId: string): Promise<Injury[]>;
+  addInjury(injury: InsertInjury): Promise<Injury>;
+  updateInjury(id: string, injury: Partial<InsertInjury>): Promise<Injury | undefined>;
+
+  // Trainer Notes
+  getTrainerNotesByClient(clientId: string): Promise<TrainerNote[]>;
+  addTrainerNote(note: InsertTrainerNote): Promise<TrainerNote>;
+
   // Workout Plans
   getAllWorkoutPlans(): Promise<WorkoutPlan[]>;
   getWorkoutPlan(id: string): Promise<WorkoutPlan | undefined>;
@@ -55,6 +66,8 @@ export class MemStorage implements IStorage {
   private dietPlans: Map<string, DietPlan>;
   private progress: Map<string, Progress>;
   private dailyLogs: Map<string, DailyLog>;
+  private injuries: Map<string, Injury>;
+  private trainerNotes: Map<string, TrainerNote>;
 
   constructor() {
     this.users = new Map();
@@ -63,6 +76,8 @@ export class MemStorage implements IStorage {
     this.dietPlans = new Map();
     this.progress = new Map();
     this.dailyLogs = new Map();
+    this.injuries = new Map();
+    this.trainerNotes = new Map();
   }
 
   // Users
@@ -164,6 +179,43 @@ export class MemStorage implements IStorage {
     const log: DailyLog = { ...insertLog, id };
     this.dailyLogs.set(id, log);
     return log;
+  }
+
+  // Injuries
+  async getInjuriesByClient(clientId: string): Promise<Injury[]> {
+    return Array.from(this.injuries.values())
+      .filter(i => i.clientId === clientId)
+      .sort((a, b) => b.date - a.date);
+  }
+
+  async addInjury(insertInjury: InsertInjury): Promise<Injury> {
+    const id = randomUUID();
+    const injury: Injury = { ...insertInjury, id };
+    this.injuries.set(id, injury);
+    return injury;
+  }
+
+  async updateInjury(id: string, updates: Partial<InsertInjury>): Promise<Injury | undefined> {
+    const injury = this.injuries.get(id);
+    if (!injury) return undefined;
+
+    const updatedInjury: Injury = { ...injury, ...updates };
+    this.injuries.set(id, updatedInjury);
+    return updatedInjury;
+  }
+
+  // Trainer Notes
+  async getTrainerNotesByClient(clientId: string): Promise<TrainerNote[]> {
+    return Array.from(this.trainerNotes.values())
+      .filter(n => n.clientId === clientId)
+      .sort((a, b) => b.date - a.date);
+  }
+
+  async addTrainerNote(insertNote: InsertTrainerNote): Promise<TrainerNote> {
+    const id = randomUUID();
+    const note: TrainerNote = { ...insertNote, id };
+    this.trainerNotes.set(id, note);
+    return note;
   }
 
   async deleteClient(id: string): Promise<boolean> {

@@ -3,9 +3,11 @@ import { useParams, useLocation, Link } from "wouter";
 import { 
   ArrowLeft, Edit, Trash2, Dumbbell, Utensils, FileText, Download, 
   Phone, Mail, Target, Activity, Scale, Ruler, Calendar, Plus,
-  Share2, Loader2, MoreVertical, TrendingUp, Link as LinkIcon
+  Share2, Loader2, MoreVertical, TrendingUp, Link as LinkIcon, Camera, Ruler as RulerIcon
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { InjuriesCard } from "@/components/injuries-card";
+import { TrainerNotes } from "@/components/trainer-notes";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -187,7 +189,15 @@ export default function ClientDetail() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [planToDelete, setPlanToDelete] = useState<{ id: string; type: 'workout' | 'diet' } | null>(null);
   const [weightDialogOpen, setWeightDialogOpen] = useState(false);
-  const [newWeight, setNewWeight] = useState("");
+  const [progressForm, setProgressForm] = useState({
+    weight: "",
+    waist: "",
+    hips: "",
+    chest: "",
+    arms: "",
+    thighs: "",
+    notes: ""
+  });
 
   const { data: client, isLoading: clientLoading } = useQuery<Client>({
     queryKey: ['/api/clients', params.id],
@@ -257,10 +267,18 @@ export default function ClientDetail() {
   };
 
   const addWeightMutation = useMutation({
-    mutationFn: async (weight: number) => {
+    mutationFn: async () => {
       await apiRequest('POST', `/api/clients/${params.id}/progress`, {
         date: Date.now(),
-        weight,
+        weight: parseFloat(progressForm.weight),
+        measurements: {
+          waist: parseFloat(progressForm.waist) || undefined,
+          hips: parseFloat(progressForm.hips) || undefined,
+          chest: parseFloat(progressForm.chest) || undefined,
+          arms: parseFloat(progressForm.arms) || undefined,
+          thighs: parseFloat(progressForm.thighs) || undefined,
+        },
+        notes: progressForm.notes
       });
     },
     onSuccess: () => {
@@ -269,10 +287,18 @@ export default function ClientDetail() {
       queryClient.invalidateQueries({ queryKey: ['/api/clients', params.id] });
       toast({
         title: "Progress logged",
-        description: "Weight entry added successfully.",
+        description: "Entry added successfully.",
       });
       setWeightDialogOpen(false);
-      setNewWeight("");
+      setProgressForm({
+        weight: "",
+        waist: "",
+        hips: "",
+        chest: "",
+        arms: "",
+        thighs: "",
+        notes: ""
+      });
     },
   });
 
@@ -478,6 +504,8 @@ export default function ClientDetail() {
         </CardContent>
       </Card>
 
+      <InjuriesCard clientId={params.id!} />
+
       {/* Plans Tabs */}
       <Tabs defaultValue="workout" className="space-y-4">
         <div className="flex items-center justify-between gap-4">
@@ -573,38 +601,82 @@ export default function ClientDetail() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>Weight Progress</CardTitle>
-                    <CardDescription>Track weight changes over time</CardDescription>
+                    <CardTitle>Progress & Measurements</CardTitle>
+                    <CardDescription>Track weight and body stats over time</CardDescription>
                   </div>
                   <Dialog open={weightDialogOpen} onOpenChange={setWeightDialogOpen}>
                     <DialogTrigger asChild>
                       <Button size="sm">
                         <Plus className="h-4 w-4 mr-2" />
-                        Log Weight
+                        Log Progress
                       </Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent className="max-w-lg">
                       <DialogHeader>
-                        <DialogTitle>Log Weight</DialogTitle>
+                        <DialogTitle>Log Progress Check-in</DialogTitle>
                         <DialogDescription>
-                          Enter current weight in kg.
+                          Record weight and body measurements.
                         </DialogDescription>
                       </DialogHeader>
                       <div className="grid gap-4 py-4">
                         <div className="grid gap-2">
-                          <Label>Weight (kg)</Label>
+                          <Label>Weight (kg) *</Label>
                           <Input
                             type="number"
-                            value={newWeight}
-                            onChange={(e) => setNewWeight(e.target.value)}
+                            value={progressForm.weight}
+                            onChange={(e) => setProgressForm({...progressForm, weight: e.target.value})}
                             placeholder="e.g. 75.5"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="grid gap-2">
+                            <Label className="text-xs">Waist (cm)</Label>
+                            <Input
+                              type="number"
+                              value={progressForm.waist}
+                              onChange={(e) => setProgressForm({...progressForm, waist: e.target.value})}
+                            />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label className="text-xs">Hips (cm)</Label>
+                            <Input
+                              type="number"
+                              value={progressForm.hips}
+                              onChange={(e) => setProgressForm({...progressForm, hips: e.target.value})}
+                            />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label className="text-xs">Chest (cm)</Label>
+                            <Input
+                              type="number"
+                              value={progressForm.chest}
+                              onChange={(e) => setProgressForm({...progressForm, chest: e.target.value})}
+                            />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label className="text-xs">Arms (cm)</Label>
+                            <Input
+                              type="number"
+                              value={progressForm.arms}
+                              onChange={(e) => setProgressForm({...progressForm, arms: e.target.value})}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid gap-2">
+                          <Label>Notes</Label>
+                          <Input
+                            value={progressForm.notes}
+                            onChange={(e) => setProgressForm({...progressForm, notes: e.target.value})}
+                            placeholder="Optional check-in notes..."
                           />
                         </div>
                       </div>
                       <DialogFooter>
                         <Button
-                          onClick={() => addWeightMutation.mutate(parseFloat(newWeight))}
-                          disabled={!newWeight || isNaN(parseFloat(newWeight))}
+                          onClick={() => addWeightMutation.mutate()}
+                          disabled={!progressForm.weight || isNaN(parseFloat(progressForm.weight))}
                         >
                           Save Entry
                         </Button>
@@ -654,36 +726,40 @@ export default function ClientDetail() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Statistics</CardTitle>
-                <CardDescription>Overall progress summary</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Starting Weight</p>
-                  <p className="text-2xl font-bold">{chartData.length > 0 ? chartData[0].weight : client.weight} kg</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Current Weight</p>
-                  <p className="text-2xl font-bold">{chartData.length > 0 ? chartData[chartData.length - 1].weight : client.weight} kg</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Total Change</p>
-                  <p className={`text-2xl font-bold ${
-                    chartData.length > 0
-                      ? (chartData[chartData.length - 1].weight - chartData[0].weight) > 0
-                        ? "text-red-500"
-                        : "text-green-500"
-                      : ""
-                  }`}>
-                    {chartData.length > 0
-                      ? (chartData[chartData.length - 1].weight - chartData[0].weight).toFixed(1)
-                      : "0.0"} kg
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Statistics</CardTitle>
+                  <CardDescription>Overall progress summary</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Starting Weight</p>
+                    <p className="text-2xl font-bold">{chartData.length > 0 ? chartData[0].weight : client.weight} kg</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Current Weight</p>
+                    <p className="text-2xl font-bold">{chartData.length > 0 ? chartData[chartData.length - 1].weight : client.weight} kg</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Total Change</p>
+                    <p className={`text-2xl font-bold ${
+                      chartData.length > 0
+                        ? (chartData[chartData.length - 1].weight - chartData[0].weight) > 0
+                          ? "text-red-500"
+                          : "text-green-500"
+                        : ""
+                    }`}>
+                      {chartData.length > 0
+                        ? (chartData[chartData.length - 1].weight - chartData[0].weight).toFixed(1)
+                        : "0.0"} kg
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <TrainerNotes clientId={params.id!} />
+            </div>
           </div>
         </TabsContent>
       </Tabs>

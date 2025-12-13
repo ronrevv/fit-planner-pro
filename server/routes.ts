@@ -6,7 +6,9 @@ import {
   insertWorkoutPlanSchema, 
   insertDietPlanSchema,
   insertProgressSchema,
-  insertDailyLogSchema
+  insertDailyLogSchema,
+  insertInjurySchema,
+  insertTrainerNoteSchema
 } from "@shared/schema";
 
 export async function registerRoutes(
@@ -92,6 +94,73 @@ export async function registerRoutes(
       res.json(log);
     } catch (error) {
       res.status(500).json({ message: "Failed to update daily log" });
+    }
+  });
+
+  // ==================== INJURIES ====================
+
+  app.get("/api/clients/:id/injuries", async (req, res) => {
+    try {
+      const injuries = await storage.getInjuriesByClient(req.params.id);
+      res.json(injuries);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch injuries" });
+    }
+  });
+
+  app.post("/api/clients/:id/injuries", async (req, res) => {
+    try {
+      const parseResult = insertInjurySchema.safeParse({
+        ...req.body,
+        clientId: req.params.id
+      });
+
+      if (!parseResult.success) {
+        return res.status(400).json({ message: "Invalid injury data" });
+      }
+
+      const injury = await storage.addInjury(parseResult.data);
+      res.status(201).json(injury);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to add injury" });
+    }
+  });
+
+  app.patch("/api/injuries/:id", async (req, res) => {
+    try {
+      const injury = await storage.updateInjury(req.params.id, req.body);
+      res.json(injury);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update injury" });
+    }
+  });
+
+  // ==================== TRAINER NOTES ====================
+
+  app.get("/api/clients/:id/notes", async (req, res) => {
+    try {
+      const notes = await storage.getTrainerNotesByClient(req.params.id);
+      res.json(notes);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch notes" });
+    }
+  });
+
+  app.post("/api/clients/:id/notes", async (req, res) => {
+    try {
+      const parseResult = insertTrainerNoteSchema.safeParse({
+        ...req.body,
+        clientId: req.params.id
+      });
+
+      if (!parseResult.success) {
+        return res.status(400).json({ message: "Invalid note data" });
+      }
+
+      const note = await storage.addTrainerNote(parseResult.data);
+      res.status(201).json(note);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to add note" });
     }
   });
 

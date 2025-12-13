@@ -7,9 +7,55 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Client, WorkoutPlan, DietPlan, DailyLog, Meal, Exercise } from "@shared/schema";
+import { useState } from "react";
+
+function CheatMealDialog({ meal, onSave }: { meal: Meal, onSave: (desc: string) => void }) {
+  const [desc, setDesc] = useState("");
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="sm" className="text-xs h-6 px-2 text-orange-600 hover:text-orange-700 hover:bg-orange-50">
+          Cheat Meal?
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Log Cheat Meal</DialogTitle>
+          <DialogDescription>
+            Swapping "{meal.name}" for a cheat meal. What are you having instead?
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-4">
+          <Label>Description</Label>
+          <Input
+            value={desc}
+            onChange={e => setDesc(e.target.value)}
+            placeholder="e.g. 2 slices of pizza"
+          />
+        </div>
+        <DialogFooter>
+          <Button onClick={() => { onSave(desc); setOpen(false); }}>Save Log</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default function ClientPortal() {
   const [match, params] = useRoute("/portal/:token");
@@ -67,15 +113,19 @@ export default function ClientPortal() {
         date: todayTimestamp,
         completedExercises: Array.from(completedExercises),
         completedMeals: Array.from(completedMeals),
+        skipped: todaysLog?.skipped,
+        cheatMeals: todaysLog?.cheatMeals,
         ...data,
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/clients', client?.id, 'logs'] });
+      toast({ title: "Updated daily log" });
     },
   });
 
   const toggleExercise = (id: string) => {
+    if (todaysLog?.skipped) return;
     if (completedExercises.has(id)) {
       completedExercises.delete(id);
     } else {
@@ -85,12 +135,36 @@ export default function ClientPortal() {
   };
 
   const toggleMeal = (id: string) => {
+    if (todaysLog?.skipped) return;
     if (completedMeals.has(id)) {
       completedMeals.delete(id);
     } else {
       completedMeals.add(id);
     }
     updateLogMutation.mutate({ completedMeals: Array.from(completedMeals) });
+  };
+
+  const handleSkipDay = () => {
+    updateLogMutation.mutate({ skipped: !todaysLog?.skipped });
+  };
+
+  const handleCheatMeal = (originalMealId: string, description: string) => {
+    const currentCheatMeals = todaysLog?.cheatMeals || [];
+    // Remove if exists
+    const filtered = currentCheatMeals.filter(cm => cm.mealId !== originalMealId);
+
+    // Add new cheat meal entry
+    const newCheatMeals = [...filtered, { mealId: originalMealId, description }];
+
+    // Also mark the original meal as completed so it shows up
+    if (!completedMeals.has(originalMealId)) {
+      completedMeals.add(originalMealId);
+    }
+
+    updateLogMutation.mutate({
+      cheatMeals: newCheatMeals,
+      completedMeals: Array.from(completedMeals)
+    });
   };
 
   if (clientLoading) {
@@ -150,6 +224,27 @@ export default function ClientPortal() {
           </TabsList>
 
           <TabsContent value="today" className="space-y-4">
+            <div className="flex justify-end">
+              <Button
+                variant={todaysLog?.skipped ? "default" : "outline"}
+                size="sm"
+                onClick={handleSkipDay}
+                className={todaysLog?.skipped ? "bg-orange-500 hover:bg-orange-600" : ""}
+              >
+                {todaysLog?.skipped ? "Day Skipped" : "Skip Day"}
+              </Button>
+            </div>
+
+            {todaysLog?.skipped ? (
+              <Card className="bg-orange-50 border-orange-200">
+                <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+                  <span className="text-4xl mb-2">⏭️</span>
+                  <h3 className="font-semibold text-lg text-orange-800">Day Skipped</h3>
+                  <p className="text-orange-600/80 text-sm">Don't worry, just get back on track tomorrow!</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <>
             {/* Workout Section */}
             <Card>
               <CardHeader className="pb-3">
@@ -236,42 +331,52 @@ export default function ClientPortal() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {todaysDiet.meals.map((meal) => (
+                    {todaysDiet.meals.map((meal) => {
+                      const cheatMeal = todaysLog?.cheatMeals?.find(cm => cm.mealId === meal.id);
+                      return (
                       <div
                         key={meal.id}
-                        className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${
+                        className={`flex flex-col gap-2 p-3 rounded-lg border transition-colors ${
                           completedMeals.has(meal.id) ? 'bg-green-50 border-green-100' : 'bg-white'
-                        }`}
-                        onClick={() => toggleMeal(meal.id)}
+                        } ${cheatMeal ? 'bg-orange-50 border-orange-200' : ''}`}
                       >
-                        <Checkbox
-                          checked={completedMeals.has(meal.id)}
-                          onCheckedChange={() => toggleMeal(meal.id)}
-                        />
-                        <div className="flex-1 space-y-1">
-                          <div className="flex justify-between">
-                            <p className={`font-medium text-sm ${completedMeals.has(meal.id) ? 'line-through text-muted-foreground' : ''}`}>
-                              {meal.name}
+                        <div className="flex items-start gap-3" onClick={() => toggleMeal(meal.id)}>
+                          <Checkbox
+                            checked={completedMeals.has(meal.id)}
+                            onCheckedChange={() => toggleMeal(meal.id)}
+                          />
+                          <div className="flex-1 space-y-1">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <p className={`font-medium text-sm ${completedMeals.has(meal.id) && !cheatMeal ? 'line-through text-muted-foreground' : ''}`}>
+                                  {meal.name}
+                                </p>
+                                {cheatMeal && (
+                                  <p className="text-xs font-medium text-orange-700">
+                                    Swapped: {cheatMeal.description}
+                                  </p>
+                                )}
+                              </div>
+                              <span className="text-xs font-medium text-muted-foreground">
+                                {meal.calories} kcal
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground capitalize">
+                              {meal.type.replace('_', ' ')}
                             </p>
-                            <span className="text-xs font-medium text-muted-foreground">
-                              {meal.calories} kcal
-                            </span>
                           </div>
-                          <p className="text-xs text-muted-foreground capitalize">
-                            {meal.type.replace('_', ' ')}
-                          </p>
-                          {meal.description && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {meal.description}
-                            </p>
-                          )}
+                        </div>
+                        <div className="flex justify-end -mt-2">
+                          <CheatMealDialog meal={meal} onSave={(desc) => handleCheatMeal(meal.id, desc)} />
                         </div>
                       </div>
-                    ))}
+                    )})}
                   </div>
                 )}
               </CardContent>
             </Card>
+            </>
+            )}
           </TabsContent>
 
           <TabsContent value="history">

@@ -65,6 +65,7 @@ export const mealSchema = z.object({
   protein: z.number().min(0).max(300),
   carbs: z.number().min(0).max(500),
   fat: z.number().min(0).max(200),
+  isCheatMeal: z.boolean().optional(),
 });
 
 export type Meal = z.infer<typeof mealSchema>;
@@ -100,12 +101,46 @@ export const progressSchema = z.object({
   clientId: z.string(),
   date: z.number(), // timestamp
   weight: z.number().min(20).max(300),
+  measurements: z.object({
+    waist: z.number().optional(),
+    hips: z.number().optional(),
+    chest: z.number().optional(),
+    arms: z.number().optional(),
+    thighs: z.number().optional(),
+  }).optional(),
+  photos: z.array(z.string()).optional(), // URLs
   notes: z.string().optional(),
 });
 
 export const insertProgressSchema = progressSchema.omit({ id: true });
 export type Progress = z.infer<typeof progressSchema>;
 export type InsertProgress = z.infer<typeof insertProgressSchema>;
+
+// Injury Schema
+export const injurySchema = z.object({
+  id: z.string(),
+  clientId: z.string(),
+  type: z.string().min(1),
+  description: z.string().optional(),
+  status: z.enum(["active", "recovering", "resolved"]),
+  date: z.number(),
+});
+
+export const insertInjurySchema = injurySchema.omit({ id: true });
+export type Injury = z.infer<typeof injurySchema>;
+export type InsertInjury = z.infer<typeof insertInjurySchema>;
+
+// Trainer Note Schema
+export const trainerNoteSchema = z.object({
+  id: z.string(),
+  clientId: z.string(),
+  date: z.number(),
+  content: z.string().min(1),
+});
+
+export const insertTrainerNoteSchema = trainerNoteSchema.omit({ id: true });
+export type TrainerNote = z.infer<typeof trainerNoteSchema>;
+export type InsertTrainerNote = z.infer<typeof insertTrainerNoteSchema>;
 
 // Daily Log Schema (Client Check-in)
 export const dailyLogSchema = z.object({
@@ -115,6 +150,12 @@ export const dailyLogSchema = z.object({
   completedExercises: z.array(z.string()), // exercise IDs
   completedMeals: z.array(z.string()), // meal IDs
   mood: z.enum(["great", "good", "neutral", "tired", "bad"]).optional(),
+  skipped: z.boolean().optional(),
+  cheatMeals: z.array(z.object({
+    mealId: z.string(), // Original meal ID swapped out
+    description: z.string(), // What they actually ate
+    calories: z.number().optional()
+  })).optional(),
   notes: z.string().optional(),
 });
 
