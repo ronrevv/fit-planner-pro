@@ -110,18 +110,21 @@ export async function registerRoutes(
 
   app.post("/api/clients/:id/injuries", async (req, res) => {
     try {
+      console.log(`[API] POST /api/clients/${req.params.id}/injuries`, req.body);
       const parseResult = insertInjurySchema.safeParse({
         ...req.body,
         clientId: req.params.id
       });
 
       if (!parseResult.success) {
+        console.error("[API] Invalid injury data:", parseResult.error);
         return res.status(400).json({ message: "Invalid injury data" });
       }
 
       const injury = await storage.addInjury(parseResult.data);
       res.status(201).json(injury);
     } catch (error) {
+      console.error("[API] Failed to add injury:", error);
       res.status(500).json({ message: "Failed to add injury" });
     }
   });
@@ -148,18 +151,21 @@ export async function registerRoutes(
 
   app.post("/api/clients/:id/notes", async (req, res) => {
     try {
+      console.log(`[API] POST /api/clients/${req.params.id}/notes`, req.body);
       const parseResult = insertTrainerNoteSchema.safeParse({
         ...req.body,
         clientId: req.params.id
       });
 
       if (!parseResult.success) {
+        console.error("[API] Invalid note data:", parseResult.error);
         return res.status(400).json({ message: "Invalid note data" });
       }
 
       const note = await storage.addTrainerNote(parseResult.data);
       res.status(201).json(note);
     } catch (error) {
+      console.error("[API] Failed to add note:", error);
       res.status(500).json({ message: "Failed to add note" });
     }
   });
