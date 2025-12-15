@@ -2,7 +2,9 @@ import {
   type Client, type InsertClient,
   type WorkoutPlan, type InsertWorkoutPlan,
   type DietPlan, type InsertDietPlan,
-  type User, type InsertUser 
+  type User, type InsertUser,
+  type InjuryLog, type InsertInjuryLog,
+  type MeasurementLog, type InsertMeasurementLog
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -34,6 +36,16 @@ export interface IStorage {
   createDietPlan(plan: InsertDietPlan): Promise<DietPlan>;
   updateDietPlan(id: string, plan: Partial<InsertDietPlan>): Promise<DietPlan | undefined>;
   deleteDietPlan(id: string): Promise<boolean>;
+
+  // Injury Logs
+  getInjuryLogsByClient(clientId: string): Promise<InjuryLog[]>;
+  createInjuryLog(log: InsertInjuryLog): Promise<InjuryLog>;
+  deleteInjuryLog(id: string): Promise<boolean>;
+
+  // Measurement Logs
+  getMeasurementLogsByClient(clientId: string): Promise<MeasurementLog[]>;
+  createMeasurementLog(log: InsertMeasurementLog): Promise<MeasurementLog>;
+  deleteMeasurementLog(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -41,12 +53,16 @@ export class MemStorage implements IStorage {
   private clients: Map<string, Client>;
   private workoutPlans: Map<string, WorkoutPlan>;
   private dietPlans: Map<string, DietPlan>;
+  private injuryLogs: Map<string, InjuryLog>;
+  private measurementLogs: Map<string, MeasurementLog>;
 
   constructor() {
     this.users = new Map();
     this.clients = new Map();
     this.workoutPlans = new Map();
     this.dietPlans = new Map();
+    this.injuryLogs = new Map();
+    this.measurementLogs = new Map();
   }
 
   // Users
@@ -105,6 +121,17 @@ export class MemStorage implements IStorage {
     for (const [planId, plan] of this.dietPlans) {
       if (plan.clientId === id) {
         this.dietPlans.delete(planId);
+      }
+    }
+    // Delete associated logs
+    for (const [logId, log] of this.injuryLogs) {
+      if (log.clientId === id) {
+        this.injuryLogs.delete(logId);
+      }
+    }
+    for (const [logId, log] of this.measurementLogs) {
+      if (log.clientId === id) {
+        this.measurementLogs.delete(logId);
       }
     }
     
@@ -182,6 +209,46 @@ export class MemStorage implements IStorage {
   async deleteDietPlan(id: string): Promise<boolean> {
     const existed = this.dietPlans.has(id);
     this.dietPlans.delete(id);
+    return existed;
+  }
+
+  // Injury Logs
+  async getInjuryLogsByClient(clientId: string): Promise<InjuryLog[]> {
+    return Array.from(this.injuryLogs.values()).filter(
+      (log) => log.clientId === clientId
+    );
+  }
+
+  async createInjuryLog(insertLog: InsertInjuryLog): Promise<InjuryLog> {
+    const id = randomUUID();
+    const log: InjuryLog = { ...insertLog, id };
+    this.injuryLogs.set(id, log);
+    return log;
+  }
+
+  async deleteInjuryLog(id: string): Promise<boolean> {
+    const existed = this.injuryLogs.has(id);
+    this.injuryLogs.delete(id);
+    return existed;
+  }
+
+  // Measurement Logs
+  async getMeasurementLogsByClient(clientId: string): Promise<MeasurementLog[]> {
+    return Array.from(this.measurementLogs.values()).filter(
+      (log) => log.clientId === clientId
+    );
+  }
+
+  async createMeasurementLog(insertLog: InsertMeasurementLog): Promise<MeasurementLog> {
+    const id = randomUUID();
+    const log: MeasurementLog = { ...insertLog, id };
+    this.measurementLogs.set(id, log);
+    return log;
+  }
+
+  async deleteMeasurementLog(id: string): Promise<boolean> {
+    const existed = this.measurementLogs.has(id);
+    this.measurementLogs.delete(id);
     return existed;
   }
 }

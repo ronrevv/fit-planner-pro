@@ -93,6 +93,40 @@ export const insertDietPlanSchema = dietPlanSchema.omit({ id: true });
 export type DietPlan = z.infer<typeof dietPlanSchema>;
 export type InsertDietPlan = z.infer<typeof insertDietPlanSchema>;
 
+// Injury Log Schema
+export const injuryLogSchema = z.object({
+  id: z.string(),
+  clientId: z.string(),
+  date: z.string(), // ISO date string
+  title: z.string().min(1, "Title is required"),
+  description: z.string().min(1, "Description is required"),
+  status: z.enum(["Active", "Recovering", "Recovered"]),
+  recoveryDate: z.string().optional(),
+});
+
+export const insertInjuryLogSchema = injuryLogSchema.omit({ id: true });
+export type InjuryLog = z.infer<typeof injuryLogSchema>;
+export type InsertInjuryLog = z.infer<typeof insertInjuryLogSchema>;
+
+// Measurement Log Schema
+export const measurementLogSchema = z.object({
+  id: z.string(),
+  clientId: z.string(),
+  date: z.string(), // ISO date string
+  weight: z.number().min(0).optional(),
+  height: z.number().min(0).optional(),
+  chest: z.number().min(0).optional(),
+  waist: z.number().min(0).optional(),
+  hips: z.number().min(0).optional(),
+  arms: z.number().min(0).optional(),
+  thighs: z.number().min(0).optional(),
+  notes: z.string().optional(),
+});
+
+export const insertMeasurementLogSchema = measurementLogSchema.omit({ id: true });
+export type MeasurementLog = z.infer<typeof measurementLogSchema>;
+export type InsertMeasurementLog = z.infer<typeof insertMeasurementLogSchema>;
+
 // User Schema (for trainers)
 export const users = {
   id: "",

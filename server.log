@@ -1,0 +1,20 @@
+
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+12:06:19 PM [express] serving on port 5000
+
+A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.
+12:07:18 PM [express] GET /api/clients 200 in 3ms :: []
+12:08:09 PM [express] GET /api/clients 200 in 1ms :: []
+12:09:25 PM [express] GET /api/clients 200 in 1ms :: []
+12:09:26 PM [express] POST /api/clients 201 in 3ms :: {"name":"Test User","email":"test@example.com","phone":"1234567890","age":25,"weight":70,"height":170,"goal":"muscle_gain","fitnessLevel":"intermediate","notes":"","id":"f465497d-d7e6-4a6b-9140-064801622955"}
+12:09:26 PM [express] GET /api/clients/f465497d-d7e6-4a6b-9140-064801622955 200 in 1ms :: {"name":"Test User","email":"test@example.com","phone":"1234567890","age":25,"weight":70,"height":170,"goal":"muscle_gain","fitnessLevel":"intermediate","notes":"","id":"f465497d-d7e6-4a6b-9140-064801622955"}
+12:09:26 PM [express] GET /api/workout-plans/ 200 in 1ms :: []
+12:09:26 PM [express] GET /api/diet-plans/ 200 in 0ms :: []
+12:09:26 PM [express] GET /api/clients/f465497d-d7e6-4a6b-9140-064801622955/injuries 200 in 1ms :: []
+12:09:26 PM [express] GET /api/clients/f465497d-d7e6-4a6b-9140-064801622955/measurements 200 in 1ms :: []
+12:09:27 PM [express] POST /api/clients/f465497d-d7e6-4a6b-9140-064801622955/injuries 201 in 1ms :: {"clientId":"f465497d-d7e6-4a6b-9140-064801622955","date":"2025-12-15","title":"Knee Pain","description":"Pain in right knee after running","status":"Active","id":"0d672453-4329-4d65-8945-ab0e5a3cbe41"}
+12:09:27 PM [express] GET /api/clients/f465497d-d7e6-4a6b-9140-064801622955/injuries 200 in 1ms :: [{"clientId":"f465497d-d7e6-4a6b-9140-064801622955","date":"2025-12-15","title":"Knee Pain","description":"Pain in right knee after running","status":"Active","id":"0d672453-4329-4d65-8945-ab0e5a3cbe41"}]
+12:09:27 PM [express] POST /api/clients/f465497d-d7e6-4a6b-9140-064801622955/measurements 201 in 1ms :: {"clientId":"f465497d-d7e6-4a6b-9140-064801622955","date":"2025-12-15","weight":75,"waist":80,"notes":"Feeling good today","id":"2b3014b5-4839-4607-8889-a83069a360f7"}
+12:09:27 PM [express] GET /api/clients/f465497d-d7e6-4a6b-9140-064801622955/measurements 200 in 1ms :: [{"clientId":"f465497d-d7e6-4a6b-9140-064801622955","date":"2025-12-15","weight":75,"waist":80,"notes":"Feeling good today","id":"2b3014b5-4839-4607-8889-a83069a360f7"}]

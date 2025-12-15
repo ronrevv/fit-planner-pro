@@ -3,7 +3,7 @@ import { useParams, useLocation, Link } from "wouter";
 import { 
   ArrowLeft, Edit, Trash2, Dumbbell, Utensils, FileText, Download, 
   Phone, Mail, Target, Activity, Scale, Ruler, Calendar, Plus,
-  Share2, Loader2, MoreVertical
+  Share2, Loader2, MoreVertical, HeartPulse
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,8 @@ import { generateWorkoutPDF, generateDietPDF, downloadPDF, shareToWhatsApp } fro
 import type { Client, WorkoutPlan, DietPlan } from "@shared/schema";
 import { goalLabels, fitnessLevelLabels } from "@shared/schema";
 import { useState } from "react";
+import { InjuryLogList } from "@/components/clients/injury-log";
+import { MeasurementLogList } from "@/components/clients/measurement-log";
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -433,8 +435,46 @@ export default function ClientDetail() {
                 </Badge>
               )}
             </TabsTrigger>
+            <TabsTrigger value="tracking" className="gap-2" data-testid="tab-tracking">
+              <HeartPulse className="h-4 w-4" />
+              Health & Progress
+            </TabsTrigger>
           </TabsList>
         </div>
+
+        <TabsContent value="tracking" className="space-y-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-xl flex items-center gap-2">
+                  <Activity className="h-5 w-5 text-primary" />
+                  Injuries & Recovery
+                </CardTitle>
+                <CardDescription>
+                  Log and monitor client injuries and rehabilitation status.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <InjuryLogList clientId={params.id!} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-xl flex items-center gap-2">
+                  <Scale className="h-5 w-5 text-primary" />
+                  Body Measurements
+                </CardTitle>
+                <CardDescription>
+                  Historical log of weight and body dimensions.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <MeasurementLogList clientId={params.id!} />
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
 
         <TabsContent value="workout" className="space-y-4">
           <div className="flex items-center justify-between">
