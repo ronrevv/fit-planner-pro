@@ -58,7 +58,11 @@ export function MeasurementLogList({ clientId }: MeasurementLogListProps) {
       };
 
       const response = await apiRequest('POST', `/api/clients/${clientId}/measurements`, payload);
-      return response.json();
+      try {
+        return await response.json();
+      } catch (e) {
+        throw new Error("Failed to parse response");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/clients', clientId, 'measurements'] });
@@ -66,8 +70,9 @@ export function MeasurementLogList({ clientId }: MeasurementLogListProps) {
       setIsOpen(false);
       form.reset();
     },
-    onError: () => {
-      toast({ title: "Failed to log measurement", variant: "destructive" });
+    onError: (error) => {
+      console.error("Measurement log error:", error);
+      toast({ title: "Failed to log measurement", description: error.message, variant: "destructive" });
     },
   });
 
