@@ -12,9 +12,10 @@ export const clientSchema = z.object({
   goal: z.enum(["weight_loss", "muscle_gain", "maintenance", "endurance", "flexibility"]),
   fitnessLevel: z.enum(["beginner", "intermediate", "advanced"]),
   notes: z.string().optional(),
+  token: z.string().optional(), // Public portal access token
 });
 
-export const insertClientSchema = clientSchema.omit({ id: true });
+export const insertClientSchema = clientSchema.omit({ id: true, token: true });
 export type Client = z.infer<typeof clientSchema>;
 export type InsertClient = z.infer<typeof insertClientSchema>;
 

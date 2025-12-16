@@ -3,7 +3,7 @@ import { useParams, useLocation, Link } from "wouter";
 import { 
   ArrowLeft, Edit, Trash2, Dumbbell, Utensils, FileText, Download, 
   Phone, Mail, Target, Activity, Scale, Ruler, Calendar, Plus,
-  Share2, Loader2, MoreVertical, HeartPulse
+  Share2, Loader2, MoreVertical, HeartPulse, Link as LinkIcon
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,8 @@ import { goalLabels, fitnessLevelLabels } from "@shared/schema";
 import { useState } from "react";
 import { InjuryLogList } from "@/components/clients/injury-log";
 import { MeasurementLogList } from "@/components/clients/measurement-log";
+import { MeasurementChart } from "@/components/clients/measurement-chart";
+import { MeasurementLog } from "@shared/schema";
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -188,6 +190,11 @@ export default function ClientDetail() {
     enabled: !!params.id,
   });
 
+  const { data: measurementLogs = [] } = useQuery<MeasurementLog[]>({
+    queryKey: ['/api/clients', params.id, 'measurements'],
+    enabled: !!params.id,
+  });
+
   const deleteClientMutation = useMutation({
     mutationFn: async () => {
       await apiRequest('DELETE', `/api/clients/${params.id}`);
@@ -320,6 +327,20 @@ export default function ClientDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {client.token && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                const url = `${window.location.origin}/portal/${client.token}`;
+                navigator.clipboard.writeText(url);
+                toast({ title: "Portal link copied to clipboard" });
+              }}
+              data-testid="button-copy-portal"
+            >
+              <LinkIcon className="h-4 w-4 mr-2" />
+              Portal Link
+            </Button>
+          )}
           <Link href={`/clients/${params.id}/edit`}>
             <Button variant="outline" data-testid="button-edit-client">
               <Edit className="h-4 w-4 mr-2" />
@@ -443,11 +464,28 @@ export default function ClientDetail() {
         </div>
 
         <TabsContent value="tracking" className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2">
+          {measurementLogs.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-xl flex items-center gap-2">
                   <Activity className="h-5 w-5 text-primary" />
+                  Progress Charts
+                </CardTitle>
+                <CardDescription>
+                  Visual tracking of weight and measurements over time.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <MeasurementChart logs={measurementLogs} />
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-xl flex items-center gap-2">
+                  <HeartPulse className="h-5 w-5 text-destructive" />
                   Injuries & Recovery
                 </CardTitle>
                 <CardDescription>

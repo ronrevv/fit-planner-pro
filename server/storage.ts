@@ -17,6 +17,7 @@ export interface IStorage {
   // Clients
   getAllClients(): Promise<Client[]>;
   getClient(id: string): Promise<Client | undefined>;
+  getClientByToken(token: string): Promise<Client | undefined>;
   createClient(client: InsertClient): Promise<Client>;
   updateClient(id: string, client: Partial<InsertClient>): Promise<Client | undefined>;
   deleteClient(id: string): Promise<boolean>;
@@ -89,12 +90,23 @@ export class MemStorage implements IStorage {
   }
 
   async getClient(id: string): Promise<Client | undefined> {
-    return this.clients.get(id);
+    const client = this.clients.get(id);
+    // Backward compatibility for existing clients without token
+    if (client && !client.token) {
+      client.token = randomUUID();
+      this.clients.set(id, client);
+    }
+    return client;
+  }
+
+  async getClientByToken(token: string): Promise<Client | undefined> {
+    return Array.from(this.clients.values()).find(c => c.token === token);
   }
 
   async createClient(insertClient: InsertClient): Promise<Client> {
     const id = randomUUID();
-    const client: Client = { ...insertClient, id };
+    const token = randomUUID();
+    const client: Client = { ...insertClient, id, token };
     this.clients.set(id, client);
     return client;
   }

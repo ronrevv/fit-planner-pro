@@ -377,5 +377,46 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== PUBLIC PORTAL ====================
+
+  app.get("/api/portal/:token", async (req, res) => {
+    try {
+      const client = await storage.getClientByToken(req.params.token);
+      if (!client) {
+        return res.status(404).json({ message: "Invalid portal token" });
+      }
+
+      const workoutPlans = await storage.getWorkoutPlansByClient(client.id);
+      const dietPlans = await storage.getDietPlansByClient(client.id);
+      const injuryLogs = await storage.getInjuryLogsByClient(client.id);
+      const measurementLogs = await storage.getMeasurementLogsByClient(client.id);
+
+      // Sort logs
+      measurementLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      injuryLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+      // Get latest active plans
+      // For simplicity, we'll take the most recently created ones
+      // In a real app, we might check month/year or an "active" flag
+      const currentWorkoutPlan = workoutPlans[workoutPlans.length - 1] || null;
+      const currentDietPlan = dietPlans[dietPlans.length - 1] || null;
+
+      res.json({
+        client: {
+          name: client.name,
+          goal: client.goal,
+          fitnessLevel: client.fitnessLevel,
+          notes: client.notes
+        },
+        currentWorkoutPlan,
+        currentDietPlan,
+        injuryLogs,
+        measurementLogs
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to load portal data" });
+    }
+  });
+
   return httpServer;
 }
