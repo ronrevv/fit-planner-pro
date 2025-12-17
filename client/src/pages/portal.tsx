@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { useParams } from "wouter";
+import { useParams, useSearch } from "wouter";
 import {
-  Activity, Calendar, Dumbbell, Utensils, AlertCircle, CheckCircle2, Circle, Scale, Ruler, HeartPulse
+  Activity, Calendar, Dumbbell, Utensils, AlertCircle, CheckCircle2, Circle, Scale, Ruler, HeartPulse, X
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,9 @@ interface PortalData {
 
 export default function Portal() {
   const params = useParams<{ token: string }>();
+  const search = useSearch();
+  const queryParams = new URLSearchParams(search);
+  const dateParam = queryParams.get("date");
 
   const { data, isLoading, error } = useQuery<PortalData>({
     queryKey: ['/api/portal', params.token],
@@ -55,6 +58,11 @@ export default function Portal() {
 
   const { client, currentWorkoutPlan, currentDietPlan, injuryLogs, measurementLogs } = data;
 
+  const targetDay = dateParam ? new Date(dateParam).getDate() : null;
+
+  const filteredWorkoutDays = currentWorkoutPlan?.days.filter(d => !targetDay || d.day === targetDay) || [];
+  const filteredDietDays = currentDietPlan?.days.filter(d => !targetDay || d.day === targetDay) || [];
+
   return (
     <div className="min-h-screen bg-background pb-12">
       {/* Header */}
@@ -70,6 +78,16 @@ export default function Portal() {
       <main className="container pt-8 space-y-8">
         {/* Welcome Section */}
         <section className="space-y-4">
+          {dateParam && (
+             <div className="bg-primary/10 text-primary px-4 py-2 rounded-lg flex items-center justify-between">
+               <span className="text-sm font-medium">
+                 Viewing content for {format(new Date(dateParam), 'PPP')}
+               </span>
+               <a href={window.location.pathname} className="text-xs hover:underline flex items-center gap-1">
+                 <X className="h-3 w-3" /> Clear Date
+               </a>
+             </div>
+          )}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Hi, {client.name}</h1>
@@ -122,7 +140,10 @@ export default function Portal() {
                   {currentWorkoutPlan ? (
                     <ScrollArea className="h-[400px] pr-4">
                       <div className="space-y-6">
-                        {currentWorkoutPlan.days.map((day) => (
+                        {filteredWorkoutDays.length === 0 && targetDay && (
+                           <p className="text-sm text-muted-foreground">No workout scheduled for Day {targetDay}.</p>
+                        )}
+                        {filteredWorkoutDays.map((day) => (
                           <div key={day.day} className="space-y-3">
                             <h4 className="font-medium flex items-center gap-2 text-sm">
                               <Calendar className="h-3 w-3 text-muted-foreground" />
@@ -174,7 +195,10 @@ export default function Portal() {
                           <span className="font-medium">Target Calories</span>
                           <span>{currentDietPlan.targetCalories} kcal/day</span>
                         </div>
-                        {currentDietPlan.days.map((day) => (
+                        {filteredDietDays.length === 0 && targetDay && (
+                           <p className="text-sm text-muted-foreground">No diet plan for Day {targetDay}.</p>
+                        )}
+                        {filteredDietDays.map((day) => (
                           <div key={day.day} className="space-y-3">
                             <h4 className="font-medium flex items-center gap-2 text-sm">
                               <Calendar className="h-3 w-3 text-muted-foreground" />

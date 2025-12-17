@@ -7,6 +7,9 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -175,6 +178,7 @@ export default function ClientDetail() {
   const { toast } = useToast();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [planToDelete, setPlanToDelete] = useState<{ id: string; type: 'workout' | 'diet' } | null>(null);
+  const [selectedPortalDate, setSelectedPortalDate] = useState<Date | undefined>(new Date());
 
   const { data: client, isLoading: clientLoading } = useQuery<Client>({
     queryKey: ['/api/clients', params.id],
@@ -327,23 +331,50 @@ export default function ClientDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={() => {
-              if (client.token) {
-                const url = `${window.location.origin}/portal/${client.token}`;
-                navigator.clipboard.writeText(url);
-                toast({ title: "Portal link copied to clipboard" });
-              } else {
-                toast({ title: "Portal link not available", variant: "destructive" });
-              }
-            }}
-            disabled={!client.token}
-            data-testid="button-copy-portal"
-          >
-            <LinkIcon className="h-4 w-4 mr-2" />
-            Portal Link
-          </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" data-testid="button-portal-options">
+                <LinkIcon className="h-4 w-4 mr-2" />
+                Portal Link
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-4" align="end">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <h4 className="font-medium leading-none">Share Portal</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Select a date to share specific daily content.
+                  </p>
+                </div>
+                <div className="border rounded-md">
+                  <CalendarComponent
+                    mode="single"
+                    selected={selectedPortalDate}
+                    onSelect={setSelectedPortalDate}
+                    initialFocus
+                  />
+                </div>
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    if (client.token) {
+                      let url = `${window.location.origin}/portal/${client.token}`;
+                      if (selectedPortalDate) {
+                        url += `?date=${format(selectedPortalDate, 'yyyy-MM-dd')}`;
+                      }
+                      navigator.clipboard.writeText(url);
+                      toast({ title: "Portal link copied", description: "Link includes selected date." });
+                    } else {
+                      toast({ title: "Portal link not available", variant: "destructive" });
+                    }
+                  }}
+                  disabled={!client.token}
+                >
+                  Copy Link
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
           <Link href={`/clients/${params.id}/edit`}>
             <Button variant="outline" data-testid="button-edit-client">
               <Edit className="h-4 w-4 mr-2" />
