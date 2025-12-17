@@ -4,7 +4,9 @@ import { storage } from "./storage";
 import { 
   insertClientSchema, 
   insertWorkoutPlanSchema, 
-  insertDietPlanSchema 
+  insertDietPlanSchema,
+  insertInjuryLogSchema,
+  insertMeasurementLogSchema
 } from "@shared/schema";
 
 export async function registerRoutes(
@@ -268,6 +270,151 @@ export async function registerRoutes(
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ message: "Failed to delete diet plan" });
+    }
+  });
+
+  // ==================== INJURY LOGS ====================
+
+  // Get injury logs for a client
+  app.get("/api/clients/:id/injuries", async (req, res) => {
+    try {
+      const logs = await storage.getInjuryLogsByClient(req.params.id);
+      res.json(logs);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch injury logs" });
+    }
+  });
+
+  // Create injury log
+  app.post("/api/clients/:id/injuries", async (req, res) => {
+    try {
+      // Ensure clientId in body matches URL param
+      const data = { ...req.body, clientId: req.params.id };
+      const parseResult = insertInjuryLogSchema.safeParse(data);
+      if (!parseResult.success) {
+        return res.status(400).json({
+          message: "Invalid injury log data",
+          errors: parseResult.error.errors
+        });
+      }
+
+      // Verify client exists
+      const client = await storage.getClient(req.params.id);
+      if (!client) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+
+      const log = await storage.createInjuryLog(parseResult.data);
+      res.status(201).json(log);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create injury log" });
+    }
+  });
+
+  // Delete injury log
+  app.delete("/api/injuries/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteInjuryLog(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Injury log not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete injury log" });
+    }
+  });
+
+  // ==================== MEASUREMENT LOGS ====================
+
+  // Get measurement logs for a client
+  app.get("/api/clients/:id/measurements", async (req, res) => {
+    try {
+      const logs = await storage.getMeasurementLogsByClient(req.params.id);
+      // Sort logs by date descending
+      logs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      res.json(logs);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch measurement logs" });
+    }
+  });
+
+  // Create measurement log
+  app.post("/api/clients/:id/measurements", async (req, res) => {
+    try {
+      // Ensure clientId in body matches URL param
+      const data = { ...req.body, clientId: req.params.id };
+      const parseResult = insertMeasurementLogSchema.safeParse(data);
+      if (!parseResult.success) {
+        return res.status(400).json({
+          message: "Invalid measurement log data",
+          errors: parseResult.error.errors
+        });
+      }
+
+      // Verify client exists
+      const client = await storage.getClient(req.params.id);
+      if (!client) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+
+      const log = await storage.createMeasurementLog(parseResult.data);
+      res.status(201).json(log);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create measurement log" });
+    }
+  });
+
+  // Delete measurement log
+  app.delete("/api/measurements/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteMeasurementLog(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Measurement log not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete measurement log" });
+    }
+  });
+
+  // ==================== PUBLIC PORTAL ====================
+
+  app.get("/api/portal/:token", async (req, res) => {
+    try {
+      const client = await storage.getClientByToken(req.params.token);
+      if (!client) {
+        return res.status(404).json({ message: "Invalid portal token" });
+      }
+
+      const workoutPlans = await storage.getWorkoutPlansByClient(client.id);
+      const dietPlans = await storage.getDietPlansByClient(client.id);
+      const injuryLogs = await storage.getInjuryLogsByClient(client.id);
+      const measurementLogs = await storage.getMeasurementLogsByClient(client.id);
+
+      // Sort logs
+      measurementLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      injuryLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+      // Get latest active plans
+      // For simplicity, we'll take the most recently created ones
+      // In a real app, we might check month/year or an "active" flag
+      const currentWorkoutPlan = workoutPlans[workoutPlans.length - 1] || null;
+      const currentDietPlan = dietPlans[dietPlans.length - 1] || null;
+
+      res.json({
+        client: {
+          name: client.name,
+          goal: client.goal,
+          fitnessLevel: client.fitnessLevel,
+          notes: client.notes
+        },
+        currentWorkoutPlan,
+        currentDietPlan,
+        injuryLogs,
+        measurementLogs
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to load portal data" });
     }
   });
 

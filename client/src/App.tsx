@@ -29,6 +29,7 @@ import ClientForm from "@/pages/client-form";
 import ClientDetail from "@/pages/client-detail";
 import WorkoutPlanBuilder from "@/pages/workout-plan-builder";
 import DietPlanBuilder from "@/pages/diet-plan-builder";
+import Portal from "@/pages/portal";
 import NotFound from "@/pages/not-found";
 
 const navigation = [
@@ -110,16 +111,33 @@ function Router() {
       <Route path="/workout-plans/:id" component={WorkoutPlanBuilder} />
       <Route path="/diet-plans/new" component={DietPlanBuilder} />
       <Route path="/diet-plans/:id" component={DietPlanBuilder} />
+      <Route path="/portal/:token" component={Portal} />
       <Route component={NotFound} />
     </Switch>
   );
 }
 
 function App() {
+  const [location] = useLocation();
+  const isPortal = location.startsWith("/portal/");
+
   const style = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3rem",
   };
+
+  if (isPortal) {
+    return (
+      <ThemeProvider defaultTheme="light" storageKey="fitpro-theme">
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <Router />
+            <Toaster />
+          </TooltipProvider>
+        </QueryClientProvider>
+      </ThemeProvider>
+    );
+  }
 
   return (
     <ThemeProvider defaultTheme="light" storageKey="fitpro-theme">
