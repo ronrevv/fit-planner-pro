@@ -86,6 +86,13 @@ export class MemStorage implements IStorage {
 
   // Clients
   async getAllClients(): Promise<Client[]> {
+    // Ensure all clients have tokens (migration for existing data)
+    for (const client of this.clients.values()) {
+      if (!client.token) {
+        client.token = randomUUID();
+        this.clients.set(client.id, client);
+      }
+    }
     return Array.from(this.clients.values());
   }
 

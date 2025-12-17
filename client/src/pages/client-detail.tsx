@@ -327,20 +327,23 @@ export default function ClientDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {client.token && (
-            <Button
-              variant="outline"
-              onClick={() => {
+          <Button
+            variant="outline"
+            onClick={() => {
+              if (client.token) {
                 const url = `${window.location.origin}/portal/${client.token}`;
                 navigator.clipboard.writeText(url);
                 toast({ title: "Portal link copied to clipboard" });
-              }}
-              data-testid="button-copy-portal"
-            >
-              <LinkIcon className="h-4 w-4 mr-2" />
-              Portal Link
-            </Button>
-          )}
+              } else {
+                toast({ title: "Portal link not available", variant: "destructive" });
+              }
+            }}
+            disabled={!client.token}
+            data-testid="button-copy-portal"
+          >
+            <LinkIcon className="h-4 w-4 mr-2" />
+            Portal Link
+          </Button>
           <Link href={`/clients/${params.id}/edit`}>
             <Button variant="outline" data-testid="button-edit-client">
               <Edit className="h-4 w-4 mr-2" />
