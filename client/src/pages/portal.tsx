@@ -94,7 +94,7 @@ export default function Portal() {
     <div className="min-h-screen bg-background pb-12">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 items-center">
+        <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex h-14 items-center">
           <div className="flex items-center gap-2 font-bold text-lg">
             <Dumbbell className="h-5 w-5 text-primary" />
             FitPro Portal
@@ -102,7 +102,7 @@ export default function Portal() {
         </div>
       </header>
 
-      <main className="container pt-8 space-y-8">
+      <main className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Welcome Section */}
         <section className="space-y-4">
           {dateParam && (
