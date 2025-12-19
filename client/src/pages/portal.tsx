@@ -86,7 +86,7 @@ export default function Portal() {
     );
   }
 
-  const { client, currentWorkoutPlan, currentDietPlan, injuryLogs, measurementLogs } = data;
+  const { client, currentWorkoutPlan, currentDietPlan, injuryLogs, measurementLogs, resources = [], trainerProfile } = data;
 
   const targetDay = dateParam ? new Date(dateParam).getDate() : null;
 
@@ -404,32 +404,32 @@ export default function Portal() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {data.trainerProfile ? (
+                  {trainerProfile ? (
                     <>
                       <div className="space-y-2">
-                        <h3 className="font-bold text-lg">{data.trainerProfile.name}</h3>
+                        <h3 className="font-bold text-lg">{trainerProfile.name}</h3>
                         <div className="space-y-1 text-sm text-muted-foreground">
                           <div className="flex items-center gap-2">
                             <Mail className="h-4 w-4" />
-                            <a href={`mailto:${data.trainerProfile.email}`} className="hover:text-primary transition-colors">
-                              {data.trainerProfile.email}
+                            <a href={`mailto:${trainerProfile.email}`} className="hover:text-primary transition-colors">
+                              {trainerProfile.email}
                             </a>
                           </div>
-                          {data.trainerProfile.phone && (
+                          {trainerProfile.phone && (
                             <div className="flex items-center gap-2">
                               <Phone className="h-4 w-4" />
-                              <a href={`tel:${data.trainerProfile.phone}`} className="hover:text-primary transition-colors">
-                                {data.trainerProfile.phone}
+                              <a href={`tel:${trainerProfile.phone}`} className="hover:text-primary transition-colors">
+                                {trainerProfile.phone}
                               </a>
                             </div>
                           )}
                         </div>
                       </div>
-                      {data.trainerProfile.bio && (
+                      {trainerProfile.bio && (
                         <>
                           <Separator />
                           <div className="text-sm text-muted-foreground italic">
-                            "{data.trainerProfile.bio}"
+                            "{trainerProfile.bio}"
                           </div>
                         </>
                       )}
@@ -459,13 +459,13 @@ export default function Portal() {
                 <CardContent>
                   <ScrollArea className="h-[400px] pr-4">
                     <div className="space-y-4">
-                      {data.resources.length === 0 ? (
+                      {resources.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
                           <FileText className="h-10 w-10 mb-2 opacity-20" />
                           <p>No resources shared yet.</p>
                         </div>
                       ) : (
-                        data.resources.map((resource) => (
+                        resources.map((resource) => (
                           <div key={resource.id} className="group border rounded-lg p-4 bg-card hover:bg-accent/50 transition-colors">
                             <div className="flex items-start gap-4">
                               <div className="p-3 bg-primary/10 rounded-lg text-primary">

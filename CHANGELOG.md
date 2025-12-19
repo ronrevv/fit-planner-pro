@@ -16,3 +16,6 @@
 - Implemented 'Trainer Profile' management in the dashboard for trainers to update their public contact info and bio.
 - Implemented 'Client Resources' management in the client detail view, allowing trainers to share links and files with specific clients.
 - Updated 'Client' schema to support resource sharing and trainer profile data storage.
+## 2025-05-23 11:30 IST (Bug Fix)
+- Fixed runtime error in client portal caused by potentially undefined resource data.
+- Added default empty array fallback for 'resources' in portal data destructuring.
