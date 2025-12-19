@@ -6,7 +6,8 @@ import {
   insertWorkoutPlanSchema, 
   insertDietPlanSchema,
   insertInjuryLogSchema,
-  insertMeasurementLogSchema
+  insertMeasurementLogSchema,
+  insertItemCompletionSchema
 } from "@shared/schema";
 
 export async function registerRoutes(
@@ -415,6 +416,46 @@ export async function registerRoutes(
       });
     } catch (error) {
       res.status(500).json({ message: "Failed to load portal data" });
+    }
+  });
+
+  // ==================== ITEM COMPLETIONS ====================
+
+  app.get("/api/portal/:token/completions", async (req, res) => {
+    try {
+      const client = await storage.getClientByToken(req.params.token);
+      if (!client) {
+        return res.status(404).json({ message: "Invalid portal token" });
+      }
+      const date = req.query.date as string;
+      if (!date) {
+        return res.status(400).json({ message: "Date parameter required" });
+      }
+
+      const completions = await storage.getItemCompletions(client.id, date);
+      res.json(completions);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch completions" });
+    }
+  });
+
+  app.post("/api/portal/:token/completions", async (req, res) => {
+    try {
+      const client = await storage.getClientByToken(req.params.token);
+      if (!client) {
+        return res.status(404).json({ message: "Invalid portal token" });
+      }
+
+      const data = { ...req.body, clientId: client.id };
+      const parseResult = insertItemCompletionSchema.safeParse(data);
+      if (!parseResult.success) {
+         return res.status(400).json({ message: "Invalid data", errors: parseResult.error.errors });
+      }
+
+      const completion = await storage.toggleItemCompletion(parseResult.data);
+      res.json(completion);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update completion" });
     }
   });
 

@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, useSearch } from "wouter";
 import {
   Activity, Calendar, Dumbbell, Utensils, AlertCircle, CheckCircle2, Circle, Scale, Ruler, HeartPulse, X
@@ -6,6 +6,9 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import type { ItemCompletion } from "@shared/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
@@ -29,6 +32,30 @@ export default function Portal() {
   const { data, isLoading, error } = useQuery<PortalData>({
     queryKey: ['/api/portal', params.token],
   });
+
+  // Default to today if no date param, but format correctly for API
+  const displayDate = dateParam || format(new Date(), 'yyyy-MM-dd');
+
+  const { data: completions = [] } = useQuery<ItemCompletion[]>({
+    queryKey: ['/api/portal', params.token, 'completions', `?date=${displayDate}`],
+    enabled: !!data,
+  });
+
+  const toggleCompletionMutation = useMutation({
+    mutationFn: async (vars: { planId: string, type: 'workout' | 'diet', itemId: string, completed: boolean }) => {
+      await apiRequest('POST', `/api/portal/${params.token}/completions`, {
+        ...vars,
+        date: displayDate,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/portal', params.token, 'completions'] });
+    },
+  });
+
+  const isCompleted = (type: 'workout' | 'diet', itemId: string) => {
+    return completions.some(c => c.type === type && c.itemId === itemId && c.completed);
+  };
 
   if (isLoading) {
     return (
@@ -154,11 +181,34 @@ export default function Portal() {
                               <div className="grid gap-2">
                                 {day.exercises.map((ex) => (
                                   <div key={ex.id} className="text-sm border rounded-lg p-3 bg-card hover:bg-accent/50 transition-colors">
-                                    <div className="flex justify-between items-start mb-1">
-                                      <span className="font-medium">{ex.name}</span>
-                                      <span className="text-muted-foreground text-xs">{ex.sets} x {ex.reps}</span>
+                                    <div className="flex items-start gap-3">
+                                      <Checkbox
+                                        id={`ex-${ex.id}`}
+                                        checked={isCompleted('workout', ex.id)}
+                                        onCheckedChange={(checked) => {
+                                          if (currentWorkoutPlan) {
+                                            toggleCompletionMutation.mutate({
+                                              planId: currentWorkoutPlan.id,
+                                              type: 'workout',
+                                              itemId: ex.id,
+                                              completed: !!checked
+                                            });
+                                          }
+                                        }}
+                                      />
+                                      <div className="flex-1">
+                                        <div className="flex justify-between items-start mb-1">
+                                          <label
+                                            htmlFor={`ex-${ex.id}`}
+                                            className={`font-medium cursor-pointer ${isCompleted('workout', ex.id) ? 'line-through text-muted-foreground' : ''}`}
+                                          >
+                                            {ex.name}
+                                          </label>
+                                          <span className="text-muted-foreground text-xs">{ex.sets} x {ex.reps}</span>
+                                        </div>
+                                        {ex.notes && <p className="text-xs text-muted-foreground">{ex.notes}</p>}
+                                      </div>
                                     </div>
-                                    {ex.notes && <p className="text-xs text-muted-foreground">{ex.notes}</p>}
                                   </div>
                                 ))}
                               </div>
@@ -207,15 +257,35 @@ export default function Portal() {
                             <div className="grid gap-2">
                               {day.meals.map((meal) => (
                                 <div key={meal.id} className="text-sm border rounded-lg p-3 bg-card hover:bg-accent/50 transition-colors">
-                                  <div className="flex justify-between items-start mb-1">
-                                    <span className="font-medium capitalize">{meal.type.replace('_', ' ')}</span>
-                                    <span className="text-muted-foreground text-xs">{meal.calories} kcal</span>
-                                  </div>
-                                  <p className="font-medium text-primary text-xs mb-1">{meal.name}</p>
-                                  <div className="flex gap-2 text-[10px] text-muted-foreground">
-                                    <span>P: {meal.protein}g</span>
-                                    <span>C: {meal.carbs}g</span>
-                                    <span>F: {meal.fat}g</span>
+                                  <div className="flex items-start gap-3">
+                                    <Checkbox
+                                      id={`meal-${meal.id}`}
+                                      checked={isCompleted('diet', meal.id)}
+                                      onCheckedChange={(checked) => {
+                                        if (currentDietPlan) {
+                                          toggleCompletionMutation.mutate({
+                                            planId: currentDietPlan.id,
+                                            type: 'diet',
+                                            itemId: meal.id,
+                                            completed: !!checked
+                                          });
+                                        }
+                                      }}
+                                    />
+                                    <div className="flex-1">
+                                      <div className="flex justify-between items-start mb-1">
+                                        <span className="font-medium capitalize text-muted-foreground">{meal.type.replace('_', ' ')}</span>
+                                        <span className="text-muted-foreground text-xs">{meal.calories} kcal</span>
+                                      </div>
+                                      <p className={`font-medium text-primary text-xs mb-1 cursor-pointer ${isCompleted('diet', meal.id) ? 'line-through opacity-70' : ''}`}>
+                                        <label htmlFor={`meal-${meal.id}`}>{meal.name}</label>
+                                      </p>
+                                      <div className="flex gap-2 text-[10px] text-muted-foreground">
+                                        <span>P: {meal.protein}g</span>
+                                        <span>C: {meal.carbs}g</span>
+                                        <span>F: {meal.fat}g</span>
+                                      </div>
+                                    </div>
                                   </div>
                                 </div>
                               ))}

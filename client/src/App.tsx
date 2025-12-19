@@ -128,7 +128,7 @@ function App() {
 
   if (isPortal) {
     return (
-      <ThemeProvider defaultTheme="light" storageKey="fitpro-theme">
+      <ThemeProvider defaultTheme="dark" storageKey="fitpro-portal-theme">
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>
             <Router />
