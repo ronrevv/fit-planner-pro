@@ -52,6 +52,15 @@ export interface IStorage {
   // Completions
   getItemCompletions(clientId: string, date: string): Promise<ItemCompletion[]>;
   toggleItemCompletion(completion: InsertItemCompletion): Promise<ItemCompletion>;
+
+  // Client Resources
+  getClientResources(clientId: string): Promise<import("@shared/schema").ClientResource[]>;
+  createClientResource(resource: import("@shared/schema").InsertClientResource): Promise<import("@shared/schema").ClientResource>;
+  deleteClientResource(id: string): Promise<boolean>;
+
+  // Trainer Profile
+  getTrainerProfile(): Promise<import("@shared/schema").TrainerProfile | undefined>;
+  updateTrainerProfile(profile: import("@shared/schema").InsertTrainerProfile): Promise<import("@shared/schema").TrainerProfile>;
 }
 
 export class MemStorage implements IStorage {
@@ -62,6 +71,8 @@ export class MemStorage implements IStorage {
   private injuryLogs: Map<string, InjuryLog>;
   private measurementLogs: Map<string, MeasurementLog>;
   private itemCompletions: Map<string, ItemCompletion>;
+  private clientResources: Map<string, import("@shared/schema").ClientResource>;
+  private trainerProfile: import("@shared/schema").TrainerProfile | undefined;
 
   constructor() {
     this.users = new Map();
@@ -71,6 +82,7 @@ export class MemStorage implements IStorage {
     this.injuryLogs = new Map();
     this.measurementLogs = new Map();
     this.itemCompletions = new Map();
+    this.clientResources = new Map();
   }
 
   // Users
@@ -303,6 +315,42 @@ export class MemStorage implements IStorage {
       this.itemCompletions.set(id, newCompletion);
       return newCompletion;
     }
+  }
+
+  // Client Resources
+  async getClientResources(clientId: string): Promise<import("@shared/schema").ClientResource[]> {
+    return Array.from(this.clientResources.values()).filter(
+      (r) => r.clientId === clientId
+    );
+  }
+
+  async createClientResource(insertResource: import("@shared/schema").InsertClientResource): Promise<import("@shared/schema").ClientResource> {
+    const id = randomUUID();
+    const resource = {
+      ...insertResource,
+      id,
+      createdAt: new Date().toISOString()
+    };
+    this.clientResources.set(id, resource);
+    return resource;
+  }
+
+  async deleteClientResource(id: string): Promise<boolean> {
+    const existed = this.clientResources.has(id);
+    this.clientResources.delete(id);
+    return existed;
+  }
+
+  // Trainer Profile
+  async getTrainerProfile(): Promise<import("@shared/schema").TrainerProfile | undefined> {
+    return this.trainerProfile;
+  }
+
+  async updateTrainerProfile(profile: import("@shared/schema").InsertTrainerProfile): Promise<import("@shared/schema").TrainerProfile> {
+    const id = this.trainerProfile?.id || randomUUID();
+    const updatedProfile = { ...profile, id };
+    this.trainerProfile = updatedProfile;
+    return updatedProfile;
   }
 }
 

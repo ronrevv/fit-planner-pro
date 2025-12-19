@@ -12,8 +12,9 @@ import type { ItemCompletion } from "@shared/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
-import { goalLabels, fitnessLevelLabels, type Client, type WorkoutPlan, type DietPlan, type InjuryLog, type MeasurementLog } from "@shared/schema";
+import { goalLabels, fitnessLevelLabels, type Client, type WorkoutPlan, type DietPlan, type InjuryLog, type MeasurementLog, type ClientResource, type TrainerProfile } from "@shared/schema";
 import { MeasurementChart } from "@/components/clients/measurement-chart";
+import { Link as LinkIcon, FileText, Phone, Mail, User as UserIcon } from "lucide-react";
 
 interface PortalData {
   client: Pick<Client, "name" | "goal" | "fitnessLevel" | "notes">;
@@ -21,6 +22,8 @@ interface PortalData {
   currentDietPlan: DietPlan | null;
   injuryLogs: InjuryLog[];
   measurementLogs: MeasurementLog[];
+  resources: ClientResource[];
+  trainerProfile: TrainerProfile | null;
 }
 
 export default function Portal() {
@@ -145,9 +148,10 @@ export default function Portal() {
 
         {/* Dashboard Tabs */}
         <Tabs defaultValue="plans" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
+        <TabsList className="grid w-full grid-cols-3 lg:w-[600px]">
             <TabsTrigger value="plans">Active Plans</TabsTrigger>
             <TabsTrigger value="progress">Health & Progress</TabsTrigger>
+          <TabsTrigger value="resources">Resources & Info</TabsTrigger>
           </TabsList>
 
           <TabsContent value="plans" className="space-y-6">
@@ -387,6 +391,118 @@ export default function Portal() {
               </Card>
             </div>
           </TabsContent>
+
+        <TabsContent value="resources" className="space-y-6">
+          <div className="grid md:grid-cols-3 gap-6">
+            {/* Trainer Profile Card - Takes up 1 column on medium screens */}
+            <div className="md:col-span-1">
+              <Card className="h-full">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <UserIcon className="h-5 w-5 text-primary" />
+                    Trainer Info
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {data.trainerProfile ? (
+                    <>
+                      <div className="space-y-2">
+                        <h3 className="font-bold text-lg">{data.trainerProfile.name}</h3>
+                        <div className="space-y-1 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-2">
+                            <Mail className="h-4 w-4" />
+                            <a href={`mailto:${data.trainerProfile.email}`} className="hover:text-primary transition-colors">
+                              {data.trainerProfile.email}
+                            </a>
+                          </div>
+                          {data.trainerProfile.phone && (
+                            <div className="flex items-center gap-2">
+                              <Phone className="h-4 w-4" />
+                              <a href={`tel:${data.trainerProfile.phone}`} className="hover:text-primary transition-colors">
+                                {data.trainerProfile.phone}
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      {data.trainerProfile.bio && (
+                        <>
+                          <Separator />
+                          <div className="text-sm text-muted-foreground italic">
+                            "{data.trainerProfile.bio}"
+                          </div>
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
+                      <UserIcon className="h-10 w-10 mb-2 opacity-20" />
+                      <p>Trainer contact info not available.</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Resources List - Takes up 2 columns on medium screens */}
+            <div className="md:col-span-2">
+              <Card className="h-full">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <LinkIcon className="h-5 w-5 text-primary" />
+                    Resources & Links
+                  </CardTitle>
+                  <CardDescription>
+                    Materials shared by your trainer
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-[400px] pr-4">
+                    <div className="space-y-4">
+                      {data.resources.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
+                          <FileText className="h-10 w-10 mb-2 opacity-20" />
+                          <p>No resources shared yet.</p>
+                        </div>
+                      ) : (
+                        data.resources.map((resource) => (
+                          <div key={resource.id} className="group border rounded-lg p-4 bg-card hover:bg-accent/50 transition-colors">
+                            <div className="flex items-start gap-4">
+                              <div className="p-3 bg-primary/10 rounded-lg text-primary">
+                                {resource.type === 'link' ? (
+                                  <LinkIcon className="h-5 w-5" />
+                                ) : (
+                                  <FileText className="h-5 w-5" />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-semibold truncate pr-2">{resource.title}</h4>
+                                {resource.description && (
+                                  <p className="text-sm text-muted-foreground mt-1 mb-2 line-clamp-2">
+                                    {resource.description}
+                                  </p>
+                                )}
+                                <a
+                                  href={resource.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center text-xs font-medium text-primary hover:underline mt-1"
+                                >
+                                  Open {resource.type === 'link' ? 'Link' : 'File'}
+                                  <LinkIcon className="h-3 w-3 ml-1" />
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </TabsContent>
         </Tabs>
       </main>
     </div>

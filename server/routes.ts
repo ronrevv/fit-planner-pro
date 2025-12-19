@@ -7,7 +7,9 @@ import {
   insertDietPlanSchema,
   insertInjuryLogSchema,
   insertMeasurementLogSchema,
-  insertItemCompletionSchema
+  insertItemCompletionSchema,
+  insertClientResourceSchema,
+  insertTrainerProfileSchema
 } from "@shared/schema";
 
 export async function registerRoutes(
@@ -391,10 +393,13 @@ export async function registerRoutes(
       const dietPlans = await storage.getDietPlansByClient(client.id);
       const injuryLogs = await storage.getInjuryLogsByClient(client.id);
       const measurementLogs = await storage.getMeasurementLogsByClient(client.id);
+      const resources = await storage.getClientResources(client.id);
+      const trainerProfile = await storage.getTrainerProfile();
 
       // Sort logs
       measurementLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       injuryLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      resources.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
       // Get latest active plans
       // For simplicity, we'll take the most recently created ones
@@ -412,7 +417,9 @@ export async function registerRoutes(
         currentWorkoutPlan,
         currentDietPlan,
         injuryLogs,
-        measurementLogs
+        measurementLogs,
+        resources,
+        trainerProfile
       });
     } catch (error) {
       res.status(500).json({ message: "Failed to load portal data" });
@@ -456,6 +463,75 @@ export async function registerRoutes(
       res.json(completion);
     } catch (error) {
       res.status(500).json({ message: "Failed to update completion" });
+    }
+  });
+
+  // ==================== CLIENT RESOURCES ====================
+
+  app.get("/api/clients/:id/resources", async (req, res) => {
+    try {
+      const resources = await storage.getClientResources(req.params.id);
+      res.json(resources);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch client resources" });
+    }
+  });
+
+  app.post("/api/clients/:id/resources", async (req, res) => {
+    try {
+      const data = { ...req.body, clientId: req.params.id };
+      const parseResult = insertClientResourceSchema.safeParse(data);
+      if (!parseResult.success) {
+        return res.status(400).json({
+          message: "Invalid resource data",
+          errors: parseResult.error.errors
+        });
+      }
+
+      const resource = await storage.createClientResource(parseResult.data);
+      res.status(201).json(resource);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create resource" });
+    }
+  });
+
+  app.delete("/api/resources/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteClientResource(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Resource not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete resource" });
+    }
+  });
+
+  // ==================== TRAINER PROFILE ====================
+
+  app.get("/api/trainer/profile", async (req, res) => {
+    try {
+      const profile = await storage.getTrainerProfile();
+      res.json(profile || null);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch trainer profile" });
+    }
+  });
+
+  app.post("/api/trainer/profile", async (req, res) => {
+    try {
+      const parseResult = insertTrainerProfileSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({
+          message: "Invalid profile data",
+          errors: parseResult.error.errors
+        });
+      }
+
+      const profile = await storage.updateTrainerProfile(parseResult.data);
+      res.json(profile);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update trainer profile" });
     }
   });
 

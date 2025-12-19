@@ -1,0 +1,13 @@
+
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+9:59:34 PM [express] serving at http://127.0.0.1:5173/
+10:00:54 PM [express] POST /api/clients 400 in 7ms :: {"message":"Invalid client data","errors":[{"code":"too_small","minimum":10,"type":"string","inclusive":true,"exact":false,"message":"Phone number required","path":["phone"]}]}
+10:01:18 PM [express] POST /api/clients 201 in 3ms :: {"name":"Test Client","email":"test@example.com","phone":"1234567890","age":30,"weight":70,"height":175,"goal":"muscle_gain","fitnessLevel":"intermediate","notes":"Test notes","id":"cbd44584-fe09-4f5a-b5ca-5b5e762d47ca","token":"d4b7df1c-9feb-401c-a8ba-9b46f160a58d"}
+10:01:18 PM [express] POST /api/clients/cbd44584-fe09-4f5a-b5ca-5b5e762d47ca/resources 201 in 2ms :: {"clientId":"cbd44584-fe09-4f5a-b5ca-5b5e762d47ca","title":"Test Resource Video","type":"link","url":"https://example.com/video","description":"A sample video for testing","id":"5b4433e9-6c1e-448f-99e5-f38e94aa7457","createdAt":"2025-12-19T22:01:18.365Z"}
+10:01:18 PM [express] POST /api/trainer/profile 200 in 1ms :: {"name":"Super Trainer","email":"trainer@fitpro.com","phone":"1234567890","bio":"I am the best trainer.","id":"8ae2ef7d-575a-4532-a0f7-3050433e9739"}
+
+A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.
+10:01:22 PM [express] GET /api/portal/d4b7df1c-9feb-401c-a8ba-9b46f160a58d 200 in 3ms :: {"client":{"name":"Test Client","goal":"muscle_gain","fitnessLevel":"intermediate","notes":"Test notes"},"currentWorkoutPlan":null,"currentDietPlan":null,"injuryLogs":[],"measurementLogs":[],"resources":[{"clientId":"cbd44584-fe09-4f5a-b5ca-5b5e762d47ca","title":"Test Resource Video","type":"link","url":"https://example.com/video","description":"A sample video for testing","id":"5b4433e9-6c1e-448f-99e5-f38e94aa7457","createdAt":"2025-12-19T22:01:18.365Z"}],"trainerProfile":{"name":"Super Trainer","email":"trainer@fitpro.com","phone":"1234567890","bio":"I am the best trainer.","id":"8ae2ef7d-575a-4532-a0f7-3050433e9739"}}
+10:01:22 PM [express] GET /api/portal/d4b7df1c-9feb-401c-a8ba-9b46f160a58d/completions/ 200 in 1ms :: []

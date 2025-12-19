@@ -186,3 +186,41 @@ export const itemCompletionSchema = z.object({
 export const insertItemCompletionSchema = itemCompletionSchema.omit({ id: true });
 export type ItemCompletion = z.infer<typeof itemCompletionSchema>;
 export type InsertItemCompletion = z.infer<typeof insertItemCompletionSchema>;
+
+// Client Resource Schema
+export const clientResourceSchema = z.object({
+  id: z.string(),
+  clientId: z.string(),
+  title: z.string().min(1, "Title is required"),
+  type: z.enum(["link", "file"]),
+  url: z.string().min(1, "URL is required"),
+  description: z.string().optional(),
+  createdAt: z.string(),
+});
+
+export const insertClientResourceSchema = clientResourceSchema.omit({ id: true, createdAt: true });
+export type ClientResource = z.infer<typeof clientResourceSchema>;
+export type InsertClientResource = z.infer<typeof insertClientResourceSchema>;
+
+// Trainer Info Schema (Singleton per client usually, or global)
+// For now, let's keep it simple: Trainer Info can be part of Client settings or a separate object associated with a client if we want specific info per client.
+// However, a global "Trainer Profile" might be better.
+// Given the current architecture, let's add a `trainerInfo` field to the Client object
+// OR create a separate simple store for trainer details that can be updated.
+// Let's create a dedicated schema for Trainer Public Profile that can be linked to clients.
+// For simplicity and since we have single trainer (implied by auth), let's store it as a key-value or single record.
+// BUT, the request implies "Something client can see".
+// Let's add a "trainerProfile" to the response of the portal, which comes from a new store or the user object.
+// Since User schema is minimal, let's add a specific 'TrainerProfile' schema.
+
+export const trainerProfileSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email(),
+  phone: z.string().optional(),
+  bio: z.string().optional(),
+});
+
+export const insertTrainerProfileSchema = trainerProfileSchema.omit({ id: true });
+export type TrainerProfile = z.infer<typeof trainerProfileSchema>;
+export type InsertTrainerProfile = z.infer<typeof insertTrainerProfileSchema>;

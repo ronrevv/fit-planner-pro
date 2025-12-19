@@ -11,3 +11,8 @@
 
 ### Changed
 - Updated `client-detail.tsx` to include the new tracking components.
+## 2025-05-23 11:15 IST (Feature Update)
+- Added 'Resources & Info' tab to the public client portal.
+- Implemented 'Trainer Profile' management in the dashboard for trainers to update their public contact info and bio.
+- Implemented 'Client Resources' management in the client detail view, allowing trainers to share links and files with specific clients.
+- Updated 'Client' schema to support resource sharing and trainer profile data storage.

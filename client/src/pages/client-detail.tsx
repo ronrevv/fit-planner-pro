@@ -40,6 +40,7 @@ import { useState } from "react";
 import { InjuryLogList } from "@/components/clients/injury-log";
 import { MeasurementLogList } from "@/components/clients/measurement-log";
 import { MeasurementChart } from "@/components/clients/measurement-chart";
+import { ClientResources } from "@/components/clients/client-resources";
 import { MeasurementLog } from "@shared/schema";
 
 const MONTH_NAMES = [
@@ -498,6 +499,8 @@ export default function ClientDetail() {
         </div>
 
         <TabsContent value="tracking" className="space-y-6">
+          <ClientResources clientId={params.id!} />
+
           {measurementLogs.length > 0 && (
             <Card>
               <CardHeader>
