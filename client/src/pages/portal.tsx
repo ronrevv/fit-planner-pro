@@ -1,11 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
-import { useParams } from "wouter";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useParams, useSearch } from "wouter";
 import {
-  Activity, Calendar, Dumbbell, Utensils, AlertCircle, CheckCircle2, Circle, Scale, Ruler, HeartPulse
+  Activity, Calendar, Dumbbell, Utensils, AlertCircle, CheckCircle2, Circle, Scale, Ruler, HeartPulse, X
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import type { ItemCompletion } from "@shared/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
@@ -22,10 +25,37 @@ interface PortalData {
 
 export default function Portal() {
   const params = useParams<{ token: string }>();
+  const search = useSearch();
+  const queryParams = new URLSearchParams(search);
+  const dateParam = queryParams.get("date");
 
   const { data, isLoading, error } = useQuery<PortalData>({
     queryKey: ['/api/portal', params.token],
   });
+
+  // Default to today if no date param, but format correctly for API
+  const displayDate = dateParam || format(new Date(), 'yyyy-MM-dd');
+
+  const { data: completions = [] } = useQuery<ItemCompletion[]>({
+    queryKey: ['/api/portal', params.token, 'completions', `?date=${displayDate}`],
+    enabled: !!data,
+  });
+
+  const toggleCompletionMutation = useMutation({
+    mutationFn: async (vars: { planId: string, type: 'workout' | 'diet', itemId: string, completed: boolean }) => {
+      await apiRequest('POST', `/api/portal/${params.token}/completions`, {
+        ...vars,
+        date: displayDate,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/portal', params.token, 'completions'] });
+    },
+  });
+
+  const isCompleted = (type: 'workout' | 'diet', itemId: string) => {
+    return completions.some(c => c.type === type && c.itemId === itemId && c.completed);
+  };
 
   if (isLoading) {
     return (
@@ -55,11 +85,16 @@ export default function Portal() {
 
   const { client, currentWorkoutPlan, currentDietPlan, injuryLogs, measurementLogs } = data;
 
+  const targetDay = dateParam ? new Date(dateParam).getDate() : null;
+
+  const filteredWorkoutDays = currentWorkoutPlan?.days.filter(d => !targetDay || d.day === targetDay) || [];
+  const filteredDietDays = currentDietPlan?.days.filter(d => !targetDay || d.day === targetDay) || [];
+
   return (
     <div className="min-h-screen bg-background pb-12">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 items-center">
+        <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex h-14 items-center">
           <div className="flex items-center gap-2 font-bold text-lg">
             <Dumbbell className="h-5 w-5 text-primary" />
             FitPro Portal
@@ -67,9 +102,19 @@ export default function Portal() {
         </div>
       </header>
 
-      <main className="container pt-8 space-y-8">
+      <main className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Welcome Section */}
         <section className="space-y-4">
+          {dateParam && (
+             <div className="bg-primary/10 text-primary px-4 py-2 rounded-lg flex items-center justify-between">
+               <span className="text-sm font-medium">
+                 Viewing content for {format(new Date(dateParam), 'PPP')}
+               </span>
+               <a href={window.location.pathname} className="text-xs hover:underline flex items-center gap-1">
+                 <X className="h-3 w-3" /> Clear Date
+               </a>
+             </div>
+          )}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Hi, {client.name}</h1>
@@ -122,7 +167,10 @@ export default function Portal() {
                   {currentWorkoutPlan ? (
                     <ScrollArea className="h-[400px] pr-4">
                       <div className="space-y-6">
-                        {currentWorkoutPlan.days.map((day) => (
+                        {filteredWorkoutDays.length === 0 && targetDay && (
+                           <p className="text-sm text-muted-foreground">No workout scheduled for Day {targetDay}.</p>
+                        )}
+                        {filteredWorkoutDays.map((day) => (
                           <div key={day.day} className="space-y-3">
                             <h4 className="font-medium flex items-center gap-2 text-sm">
                               <Calendar className="h-3 w-3 text-muted-foreground" />
@@ -133,11 +181,34 @@ export default function Portal() {
                               <div className="grid gap-2">
                                 {day.exercises.map((ex) => (
                                   <div key={ex.id} className="text-sm border rounded-lg p-3 bg-card hover:bg-accent/50 transition-colors">
-                                    <div className="flex justify-between items-start mb-1">
-                                      <span className="font-medium">{ex.name}</span>
-                                      <span className="text-muted-foreground text-xs">{ex.sets} x {ex.reps}</span>
+                                    <div className="flex items-start gap-3">
+                                      <Checkbox
+                                        id={`ex-${ex.id}`}
+                                        checked={isCompleted('workout', ex.id)}
+                                        onCheckedChange={(checked) => {
+                                          if (currentWorkoutPlan) {
+                                            toggleCompletionMutation.mutate({
+                                              planId: currentWorkoutPlan.id,
+                                              type: 'workout',
+                                              itemId: ex.id,
+                                              completed: !!checked
+                                            });
+                                          }
+                                        }}
+                                      />
+                                      <div className="flex-1">
+                                        <div className="flex justify-between items-start mb-1">
+                                          <label
+                                            htmlFor={`ex-${ex.id}`}
+                                            className={`font-medium cursor-pointer ${isCompleted('workout', ex.id) ? 'line-through text-muted-foreground' : ''}`}
+                                          >
+                                            {ex.name}
+                                          </label>
+                                          <span className="text-muted-foreground text-xs">{ex.sets} x {ex.reps}</span>
+                                        </div>
+                                        {ex.notes && <p className="text-xs text-muted-foreground">{ex.notes}</p>}
+                                      </div>
                                     </div>
-                                    {ex.notes && <p className="text-xs text-muted-foreground">{ex.notes}</p>}
                                   </div>
                                 ))}
                               </div>
@@ -174,7 +245,10 @@ export default function Portal() {
                           <span className="font-medium">Target Calories</span>
                           <span>{currentDietPlan.targetCalories} kcal/day</span>
                         </div>
-                        {currentDietPlan.days.map((day) => (
+                        {filteredDietDays.length === 0 && targetDay && (
+                           <p className="text-sm text-muted-foreground">No diet plan for Day {targetDay}.</p>
+                        )}
+                        {filteredDietDays.map((day) => (
                           <div key={day.day} className="space-y-3">
                             <h4 className="font-medium flex items-center gap-2 text-sm">
                               <Calendar className="h-3 w-3 text-muted-foreground" />
@@ -183,15 +257,35 @@ export default function Portal() {
                             <div className="grid gap-2">
                               {day.meals.map((meal) => (
                                 <div key={meal.id} className="text-sm border rounded-lg p-3 bg-card hover:bg-accent/50 transition-colors">
-                                  <div className="flex justify-between items-start mb-1">
-                                    <span className="font-medium capitalize">{meal.type.replace('_', ' ')}</span>
-                                    <span className="text-muted-foreground text-xs">{meal.calories} kcal</span>
-                                  </div>
-                                  <p className="font-medium text-primary text-xs mb-1">{meal.name}</p>
-                                  <div className="flex gap-2 text-[10px] text-muted-foreground">
-                                    <span>P: {meal.protein}g</span>
-                                    <span>C: {meal.carbs}g</span>
-                                    <span>F: {meal.fat}g</span>
+                                  <div className="flex items-start gap-3">
+                                    <Checkbox
+                                      id={`meal-${meal.id}`}
+                                      checked={isCompleted('diet', meal.id)}
+                                      onCheckedChange={(checked) => {
+                                        if (currentDietPlan) {
+                                          toggleCompletionMutation.mutate({
+                                            planId: currentDietPlan.id,
+                                            type: 'diet',
+                                            itemId: meal.id,
+                                            completed: !!checked
+                                          });
+                                        }
+                                      }}
+                                    />
+                                    <div className="flex-1">
+                                      <div className="flex justify-between items-start mb-1">
+                                        <span className="font-medium capitalize text-muted-foreground">{meal.type.replace('_', ' ')}</span>
+                                        <span className="text-muted-foreground text-xs">{meal.calories} kcal</span>
+                                      </div>
+                                      <p className={`font-medium text-primary text-xs mb-1 cursor-pointer ${isCompleted('diet', meal.id) ? 'line-through opacity-70' : ''}`}>
+                                        <label htmlFor={`meal-${meal.id}`}>{meal.name}</label>
+                                      </p>
+                                      <div className="flex gap-2 text-[10px] text-muted-foreground">
+                                        <span>P: {meal.protein}g</span>
+                                        <span>C: {meal.carbs}g</span>
+                                        <span>F: {meal.fat}g</span>
+                                      </div>
+                                    </div>
                                   </div>
                                 </div>
                               ))}

@@ -171,3 +171,18 @@ export const mealTypeLabels: Record<Meal["type"], string> = {
   snack_afternoon: "Afternoon Snack",
   dinner: "Dinner",
 };
+
+// Item Completion Schema
+export const itemCompletionSchema = z.object({
+  id: z.string(),
+  clientId: z.string(),
+  planId: z.string(), // ID of the workout or diet plan
+  type: z.enum(["workout", "diet"]),
+  date: z.string(), // ISO date string (YYYY-MM-DD)
+  itemId: z.string(), // ID of exercise or meal
+  completed: z.boolean(),
+});
+
+export const insertItemCompletionSchema = itemCompletionSchema.omit({ id: true });
+export type ItemCompletion = z.infer<typeof itemCompletionSchema>;
+export type InsertItemCompletion = z.infer<typeof insertItemCompletionSchema>;

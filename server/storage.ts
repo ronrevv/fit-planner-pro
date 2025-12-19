@@ -4,7 +4,8 @@ import {
   type DietPlan, type InsertDietPlan,
   type User, type InsertUser,
   type InjuryLog, type InsertInjuryLog,
-  type MeasurementLog, type InsertMeasurementLog
+  type MeasurementLog, type InsertMeasurementLog,
+  type ItemCompletion, type InsertItemCompletion
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -47,6 +48,10 @@ export interface IStorage {
   getMeasurementLogsByClient(clientId: string): Promise<MeasurementLog[]>;
   createMeasurementLog(log: InsertMeasurementLog): Promise<MeasurementLog>;
   deleteMeasurementLog(id: string): Promise<boolean>;
+
+  // Completions
+  getItemCompletions(clientId: string, date: string): Promise<ItemCompletion[]>;
+  toggleItemCompletion(completion: InsertItemCompletion): Promise<ItemCompletion>;
 }
 
 export class MemStorage implements IStorage {
@@ -56,6 +61,7 @@ export class MemStorage implements IStorage {
   private dietPlans: Map<string, DietPlan>;
   private injuryLogs: Map<string, InjuryLog>;
   private measurementLogs: Map<string, MeasurementLog>;
+  private itemCompletions: Map<string, ItemCompletion>;
 
   constructor() {
     this.users = new Map();
@@ -64,6 +70,7 @@ export class MemStorage implements IStorage {
     this.dietPlans = new Map();
     this.injuryLogs = new Map();
     this.measurementLogs = new Map();
+    this.itemCompletions = new Map();
   }
 
   // Users
@@ -269,6 +276,33 @@ export class MemStorage implements IStorage {
     const existed = this.measurementLogs.has(id);
     this.measurementLogs.delete(id);
     return existed;
+  }
+
+  // Completions
+  async getItemCompletions(clientId: string, date: string): Promise<ItemCompletion[]> {
+    return Array.from(this.itemCompletions.values()).filter(
+      (c) => c.clientId === clientId && c.date === date
+    );
+  }
+
+  async toggleItemCompletion(insert: InsertItemCompletion): Promise<ItemCompletion> {
+    const existing = Array.from(this.itemCompletions.values()).find(
+      c => c.clientId === insert.clientId &&
+           c.date === insert.date &&
+           c.itemId === insert.itemId &&
+           c.type === insert.type
+    );
+
+    if (existing) {
+      const updated = { ...existing, completed: insert.completed };
+      this.itemCompletions.set(existing.id, updated);
+      return updated;
+    } else {
+      const id = randomUUID();
+      const newCompletion = { ...insert, id };
+      this.itemCompletions.set(id, newCompletion);
+      return newCompletion;
+    }
   }
 }
 
