@@ -117,10 +117,33 @@ export default function Login() {
             </form>
           </Form>
         </CardContent>
-        <CardFooter className="flex flex-col space-y-2 text-center text-sm text-muted-foreground">
-          <p>
-            Demo Login: <strong>trainer</strong> / <strong>password</strong>
-          </p>
+        <CardFooter className="flex flex-col space-y-4 text-center text-sm text-muted-foreground">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                Or continue with
+              </span>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4 w-full">
+            <Button
+              variant="outline"
+              onClick={() => loginMutation.mutate({ username: "trainer", password: "password" })}
+              disabled={loginMutation.isPending}
+            >
+              Demo Trainer
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => loginMutation.mutate({ username: "admin", password: "password" })}
+              disabled={loginMutation.isPending}
+            >
+              Demo Admin
+            </Button>
+          </div>
         </CardFooter>
       </Card>
     </div>
