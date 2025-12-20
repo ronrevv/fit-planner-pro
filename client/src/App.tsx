@@ -29,12 +29,15 @@ import ClientForm from "@/pages/client-form";
 import ClientDetail from "@/pages/client-detail";
 import WorkoutPlanBuilder from "@/pages/workout-plan-builder";
 import DietPlanBuilder from "@/pages/diet-plan-builder";
+import HealthTracker from "@/pages/health-tracker";
 import Portal from "@/pages/portal";
 import NotFound from "@/pages/not-found";
+import { Activity } from "lucide-react";
 
 const navigation = [
   { title: "Dashboard", href: "/", icon: LayoutDashboard },
   { title: "Clients", href: "/clients", icon: Users },
+  { title: "Health", href: "/health", icon: Activity },
   { title: "Workout Plans", href: "/workout-plans/new", icon: Dumbbell },
   { title: "Diet Plans", href: "/diet-plans/new", icon: Utensils },
 ];
@@ -111,6 +114,7 @@ function Router() {
       <Route path="/workout-plans/:id" component={WorkoutPlanBuilder} />
       <Route path="/diet-plans/new" component={DietPlanBuilder} />
       <Route path="/diet-plans/:id" component={DietPlanBuilder} />
+      <Route path="/health" component={HealthTracker} />
       <Route path="/portal/:token" component={Portal} />
       <Route component={NotFound} />
     </Switch>

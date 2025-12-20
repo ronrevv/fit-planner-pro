@@ -11,3 +11,19 @@
 
 ### Changed
 - Updated `client-detail.tsx` to include the new tracking components.
+## 2025-05-23 11:15 IST (Feature Update)
+- Added 'Resources & Info' tab to the public client portal.
+- Implemented 'Trainer Profile' management in the dashboard for trainers to update their public contact info and bio.
+- Implemented 'Client Resources' management in the client detail view, allowing trainers to share links and files with specific clients.
+- Updated 'Client' schema to support resource sharing and trainer profile data storage.
+## 2025-05-23 11:30 IST (Bug Fix)
+- Fixed runtime error in client portal caused by potentially undefined resource data.
+- Added default empty array fallback for 'resources' in portal data destructuring.
+## 2025-05-23 11:45 IST (Feature Update)
+- Added new 'Health' route () and sidebar navigation item.
+- Implemented 'Health Tracker' page with searchable client selection.
+- Enabled direct management of injury and measurement logs from the Health Tracker page.
+## 2025-05-23 11:45 IST (Feature Update)
+- Added new 'Health' route (`/health`) and sidebar navigation item.
+- Implemented 'Health Tracker' page with searchable client selection.
+- Enabled direct management of injury and measurement logs from the Health Tracker page.
