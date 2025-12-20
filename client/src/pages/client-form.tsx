@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { insertClientSchema, type Client, type InsertClient, goalLabels, fitnessLevelLabels } from "@shared/schema";
+import { insertClientFormSchema, type Client, type InsertClient, goalLabels, fitnessLevelLabels } from "@shared/schema";
 
 export default function ClientForm() {
   const params = useParams<{ id?: string }>();
@@ -40,7 +40,7 @@ export default function ClientForm() {
   });
 
   const form = useForm<InsertClient>({
-    resolver: zodResolver(insertClientSchema),
+    resolver: zodResolver(insertClientFormSchema),
     defaultValues: {
       name: "",
       email: "",

@@ -56,6 +56,8 @@ export const clientSchema = z.object({
 });
 
 export const insertClientSchema = clientSchema.omit({ id: true, token: true });
+// Schema for frontend forms (gymId/trainerId injected by backend)
+export const insertClientFormSchema = insertClientSchema.omit({ gymId: true, trainerId: true });
 export type Client = z.infer<typeof clientSchema>;
 export type InsertClient = z.infer<typeof insertClientSchema>;
 

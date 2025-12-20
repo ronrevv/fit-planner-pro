@@ -10,6 +10,10 @@ import {
   UserRole
 } from "@shared/schema";
 import { randomUUID } from "crypto";
+import session from "express-session";
+import createMemoryStore from "memorystore";
+
+const MemoryStore = createMemoryStore(session);
 
 export interface IStorage {
   // Gyms
@@ -62,7 +66,7 @@ export interface IStorage {
   toggleItemCompletion(completion: InsertItemCompletion): Promise<ItemCompletion>;
 
   // Session Store support
-  sessionStore: any;
+  sessionStore: session.Store;
 }
 
 export class MemStorage implements IStorage {
@@ -74,7 +78,7 @@ export class MemStorage implements IStorage {
   private injuryLogs: Map<string, InjuryLog>;
   private measurementLogs: Map<string, MeasurementLog>;
   private itemCompletions: Map<string, ItemCompletion>;
-  public sessionStore: any;
+  public sessionStore: session.Store;
 
   // Defaults for migration
   private defaultGymId: string;
@@ -89,6 +93,9 @@ export class MemStorage implements IStorage {
     this.injuryLogs = new Map();
     this.measurementLogs = new Map();
     this.itemCompletions = new Map();
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000,
+    });
 
     // Initialize default gym and trainer for backward compatibility/migration
     this.defaultGymId = randomUUID();
