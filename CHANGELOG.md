@@ -19,3 +19,11 @@
 ## 2025-05-23 11:30 IST (Bug Fix)
 - Fixed runtime error in client portal caused by potentially undefined resource data.
 - Added default empty array fallback for 'resources' in portal data destructuring.
+## 2025-05-23 11:45 IST (Feature Update)
+- Added new 'Health' route () and sidebar navigation item.
+- Implemented 'Health Tracker' page with searchable client selection.
+- Enabled direct management of injury and measurement logs from the Health Tracker page.
+## 2025-05-23 11:45 IST (Feature Update)
+- Added new 'Health' route (`/health`) and sidebar navigation item.
+- Implemented 'Health Tracker' page with searchable client selection.
+- Enabled direct management of injury and measurement logs from the Health Tracker page.
