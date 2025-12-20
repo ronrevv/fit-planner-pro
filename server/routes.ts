@@ -47,6 +47,16 @@ export async function registerRoutes(
   
   // ==================== GYMS & USERS (ADMIN) ====================
 
+  // Get all Gyms (Super Admin)
+  app.get("/api/gyms", isSuperAdmin, async (req, res) => {
+    try {
+      const gyms = await storage.getAllGyms();
+      res.json(gyms);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch gyms" });
+    }
+  });
+
   // Create Gym (Super Admin only)
   app.post("/api/gyms", isSuperAdmin, async (req, res) => {
     try {
@@ -108,6 +118,16 @@ export async function registerRoutes(
       res.status(201).json(newUser);
     } catch (error) {
       res.status(500).json({ message: "Failed to create user" });
+    }
+  });
+
+  // Get All Users (Super Admin)
+  app.get("/api/users", isSuperAdmin, async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch users" });
     }
   });
 

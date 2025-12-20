@@ -20,12 +20,14 @@ export interface IStorage {
   createGym(gym: InsertGym): Promise<Gym>;
   getGym(id: string): Promise<Gym | undefined>;
   getGymBySlug(slug: string): Promise<Gym | undefined>;
+  getAllGyms(): Promise<Gym[]>;
 
   // Users
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   getUsersByGym(gymId: string): Promise<User[]>;
+  getAllUsers(): Promise<User[]>;
 
   // Clients
   getAllClients(gymId?: string, trainerId?: string): Promise<Client[]>;
@@ -149,6 +151,10 @@ export class MemStorage implements IStorage {
     return Array.from(this.gyms.values()).find(g => g.slug === slug);
   }
 
+  async getAllGyms(): Promise<Gym[]> {
+    return Array.from(this.gyms.values());
+  }
+
   // Users
   async getUser(id: string): Promise<User | undefined> {
     return this.users.get(id);
@@ -169,6 +175,10 @@ export class MemStorage implements IStorage {
 
   async getUsersByGym(gymId: string): Promise<User[]> {
     return Array.from(this.users.values()).filter(u => u.gymId === gymId);
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return Array.from(this.users.values());
   }
 
   // Clients
