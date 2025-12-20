@@ -5,18 +5,26 @@ import {
   type User, type InsertUser,
   type InjuryLog, type InsertInjuryLog,
   type MeasurementLog, type InsertMeasurementLog,
-  type ItemCompletion, type InsertItemCompletion
+  type ItemCompletion, type InsertItemCompletion,
+  type Gym, type InsertGym,
+  UserRole
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
+  // Gyms
+  createGym(gym: InsertGym): Promise<Gym>;
+  getGym(id: string): Promise<Gym | undefined>;
+  getGymBySlug(slug: string): Promise<Gym | undefined>;
+
   // Users
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  getUsersByGym(gymId: string): Promise<User[]>;
 
   // Clients
-  getAllClients(): Promise<Client[]>;
+  getAllClients(gymId?: string, trainerId?: string): Promise<Client[]>;
   getClient(id: string): Promise<Client | undefined>;
   getClientByToken(token: string): Promise<Client | undefined>;
   createClient(client: InsertClient): Promise<Client>;
@@ -52,9 +60,13 @@ export interface IStorage {
   // Completions
   getItemCompletions(clientId: string, date: string): Promise<ItemCompletion[]>;
   toggleItemCompletion(completion: InsertItemCompletion): Promise<ItemCompletion>;
+
+  // Session Store support
+  sessionStore: any;
 }
 
 export class MemStorage implements IStorage {
+  private gyms: Map<string, Gym>;
   private users: Map<string, User>;
   private clients: Map<string, Client>;
   private workoutPlans: Map<string, WorkoutPlan>;
@@ -62,8 +74,14 @@ export class MemStorage implements IStorage {
   private injuryLogs: Map<string, InjuryLog>;
   private measurementLogs: Map<string, MeasurementLog>;
   private itemCompletions: Map<string, ItemCompletion>;
+  public sessionStore: any;
+
+  // Defaults for migration
+  private defaultGymId: string;
+  private defaultTrainerId: string;
 
   constructor() {
+    this.gyms = new Map();
     this.users = new Map();
     this.clients = new Map();
     this.workoutPlans = new Map();
@@ -71,6 +89,45 @@ export class MemStorage implements IStorage {
     this.injuryLogs = new Map();
     this.measurementLogs = new Map();
     this.itemCompletions = new Map();
+
+    // Initialize default gym and trainer for backward compatibility/migration
+    this.defaultGymId = randomUUID();
+    this.defaultTrainerId = randomUUID();
+
+    // Create default Gym
+    this.gyms.set(this.defaultGymId, {
+      id: this.defaultGymId,
+      name: "Default Gym",
+      slug: "default",
+      createdAt: new Date().toISOString()
+    });
+
+    // Create default Trainer
+    this.users.set(this.defaultTrainerId, {
+      id: this.defaultTrainerId,
+      username: "trainer",
+      password: "password", // In real app this would be hashed
+      fullName: "Default Trainer",
+      role: UserRole.TRAINER,
+      gymId: this.defaultGymId,
+      createdAt: new Date().toISOString()
+    });
+  }
+
+  // Gyms
+  async createGym(insertGym: InsertGym): Promise<Gym> {
+    const id = randomUUID();
+    const gym: Gym = { ...insertGym, id, createdAt: new Date().toISOString() };
+    this.gyms.set(id, gym);
+    return gym;
+  }
+
+  async getGym(id: string): Promise<Gym | undefined> {
+    return this.gyms.get(id);
+  }
+
+  async getGymBySlug(slug: string): Promise<Gym | undefined> {
+    return Array.from(this.gyms.values()).find(g => g.slug === slug);
   }
 
   // Users
@@ -86,29 +143,72 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = randomUUID();
-    const user: User = { ...insertUser, id };
+    const user: User = { ...insertUser, id, createdAt: new Date().toISOString() };
     this.users.set(id, user);
     return user;
   }
 
+  async getUsersByGym(gymId: string): Promise<User[]> {
+    return Array.from(this.users.values()).filter(u => u.gymId === gymId);
+  }
+
   // Clients
-  async getAllClients(): Promise<Client[]> {
-    // Ensure all clients have tokens (migration for existing data)
+  async getAllClients(gymId?: string, trainerId?: string): Promise<Client[]> {
+    // Migration: Ensure all clients have token, gymId, and trainerId
     for (const client of this.clients.values()) {
+      let modified = false;
       if (!client.token) {
         client.token = randomUUID();
+        modified = true;
+      }
+      if (!client.gymId) {
+        client.gymId = this.defaultGymId;
+        modified = true;
+      }
+      if (!client.trainerId) {
+        client.trainerId = this.defaultTrainerId;
+        modified = true;
+      }
+
+      if (modified) {
         this.clients.set(client.id, client);
       }
     }
-    return Array.from(this.clients.values());
+
+    let clients = Array.from(this.clients.values());
+
+    if (gymId) {
+      clients = clients.filter(c => c.gymId === gymId);
+    }
+
+    if (trainerId) {
+      clients = clients.filter(c => c.trainerId === trainerId);
+    }
+
+    return clients;
   }
 
   async getClient(id: string): Promise<Client | undefined> {
     const client = this.clients.get(id);
-    // Backward compatibility for existing clients without token
-    if (client && !client.token) {
-      client.token = randomUUID();
-      this.clients.set(id, client);
+    // Backward compatibility for existing clients without token/gym/trainer
+    if (client) {
+      let modified = false;
+      if (!client.token) {
+        client.token = randomUUID();
+        modified = true;
+      }
+      if (!client.gymId) {
+        client.gymId = this.defaultGymId;
+        modified = true;
+      }
+      if (!client.trainerId) {
+        client.trainerId = this.defaultTrainerId;
+        modified = true;
+      }
+
+      if (modified) {
+        this.clients.set(id, client);
+      }
     }
     return client;
   }

@@ -1,10 +1,12 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, Link, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { AuthProvider } from "@/hooks/use-auth";
+import { ProtectedRoute } from "./lib/protected-route";
 import { 
   SidebarProvider, 
   Sidebar, 
@@ -20,10 +22,12 @@ import {
   SidebarTrigger,
   SidebarInset,
 } from "@/components/ui/sidebar";
-import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Users, Dumbbell, Utensils, ChevronRight } from "lucide-react";
+import { LayoutDashboard, Users, Dumbbell, Utensils, ChevronRight, Settings } from "lucide-react";
 
+import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
+import AdminDashboard from "@/pages/admin-dashboard";
+import GymDashboard from "@/pages/gym-dashboard";
 import Clients from "@/pages/clients";
 import ClientForm from "@/pages/client-form";
 import ClientDetail from "@/pages/client-detail";
@@ -31,16 +35,23 @@ import WorkoutPlanBuilder from "@/pages/workout-plan-builder";
 import DietPlanBuilder from "@/pages/diet-plan-builder";
 import Portal from "@/pages/portal";
 import NotFound from "@/pages/not-found";
-
-const navigation = [
-  { title: "Dashboard", href: "/", icon: LayoutDashboard },
-  { title: "Clients", href: "/clients", icon: Users },
-  { title: "Workout Plans", href: "/workout-plans/new", icon: Dumbbell },
-  { title: "Diet Plans", href: "/diet-plans/new", icon: Utensils },
-];
+import { useAuth } from "@/hooks/use-auth";
+import { UserRole } from "@shared/schema";
 
 function AppSidebar() {
   const [location] = useLocation();
+  const { user, logoutMutation } = useAuth();
+
+  const navigation = [
+    { title: "Dashboard", href: "/", icon: LayoutDashboard },
+    { title: "Clients", href: "/clients", icon: Users },
+    { title: "Workout Plans", href: "/workout-plans/new", icon: Dumbbell },
+    { title: "Diet Plans", href: "/diet-plans/new", icon: Utensils },
+  ];
+
+  if (user?.role === UserRole.SUPER_ADMIN) {
+      navigation.push({ title: "Admin", href: "/admin", icon: Settings });
+  }
 
   return (
     <Sidebar>
@@ -52,7 +63,9 @@ function AppSidebar() {
             </div>
             <div className="flex flex-col">
               <span className="font-bold text-lg tracking-tight">FitPro</span>
-              <span className="text-xs text-muted-foreground -mt-1">Trainer Platform</span>
+              <span className="text-xs text-muted-foreground -mt-1">
+                {user?.role === UserRole.SUPER_ADMIN ? "Platform Admin" : "Trainer Platform"}
+              </span>
             </div>
           </div>
         </Link>
@@ -85,14 +98,18 @@ function AppSidebar() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-              <span className="text-xs font-semibold text-primary">TR</span>
+              <span className="text-xs font-semibold text-primary">
+                {user?.fullName?.substring(0, 2).toUpperCase() || "TR"}
+              </span>
             </div>
             <div className="flex flex-col">
-              <span className="text-sm font-medium">Trainer</span>
-              <span className="text-xs text-muted-foreground">Pro Account</span>
+              <span className="text-sm font-medium truncate max-w-[100px]">{user?.fullName || "Trainer"}</span>
+              <span className="text-xs text-muted-foreground capitalize">{user?.role?.replace("_", " ") || "Pro Account"}</span>
             </div>
           </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <div className="cursor-pointer" onClick={() => logoutMutation.mutate()}>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </div>
         </div>
       </SidebarFooter>
     </Sidebar>
@@ -102,24 +119,43 @@ function AppSidebar() {
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Dashboard} />
-      <Route path="/clients" component={Clients} />
-      <Route path="/clients/new" component={ClientForm} />
-      <Route path="/clients/:id/edit" component={ClientForm} />
-      <Route path="/clients/:id" component={ClientDetail} />
-      <Route path="/workout-plans/new" component={WorkoutPlanBuilder} />
-      <Route path="/workout-plans/:id" component={WorkoutPlanBuilder} />
-      <Route path="/diet-plans/new" component={DietPlanBuilder} />
-      <Route path="/diet-plans/:id" component={DietPlanBuilder} />
+      <Route path="/login" component={Login} />
       <Route path="/portal/:token" component={Portal} />
+      <ProtectedRoute path="/" component={Dashboard} />
+      <ProtectedRoute path="/admin" component={AdminDashboard} />
+      <ProtectedRoute path="/gym-admin" component={GymDashboard} />
+      <ProtectedRoute path="/clients" component={Clients} />
+      <ProtectedRoute path="/clients/new" component={ClientForm} />
+      <ProtectedRoute path="/clients/:id/edit" component={ClientForm} />
+      <ProtectedRoute path="/clients/:id" component={ClientDetail} />
+      <ProtectedRoute path="/workout-plans/new" component={WorkoutPlanBuilder} />
+      <ProtectedRoute path="/workout-plans/:id" component={WorkoutPlanBuilder} />
+      <ProtectedRoute path="/diet-plans/new" component={DietPlanBuilder} />
+      <ProtectedRoute path="/diet-plans/:id" component={DietPlanBuilder} />
       <Route component={NotFound} />
     </Switch>
   );
 }
 
 function App() {
+  return (
+    <ThemeProvider defaultTheme="light" storageKey="fitpro-theme">
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <TooltipProvider>
+            <AppContent />
+            <Toaster />
+          </TooltipProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
+  );
+}
+
+function AppContent() {
   const [location] = useLocation();
   const isPortal = location.startsWith("/portal/");
+  const isLogin = location === "/login";
 
   const style = {
     "--sidebar-width": "16rem",
@@ -127,40 +163,28 @@ function App() {
   };
 
   if (isPortal) {
-    return (
-      <ThemeProvider defaultTheme="dark" storageKey="fitpro-portal-theme">
-        <QueryClientProvider client={queryClient}>
-          <TooltipProvider>
-            <Router />
-            <Toaster />
-          </TooltipProvider>
-        </QueryClientProvider>
-      </ThemeProvider>
-    );
+    return <Router />;
+  }
+
+  if (isLogin) {
+    return <Router />;
   }
 
   return (
-    <ThemeProvider defaultTheme="light" storageKey="fitpro-theme">
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <SidebarProvider style={style as React.CSSProperties}>
-            <div className="flex min-h-screen w-full">
-              <AppSidebar />
-              <SidebarInset className="flex flex-col flex-1">
-                <header className="sticky top-0 z-50 flex h-14 items-center justify-between gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4">
-                  <SidebarTrigger data-testid="button-sidebar-toggle" />
-                  <ThemeToggle />
-                </header>
-                <main className="flex-1 overflow-auto">
-                  <Router />
-                </main>
-              </SidebarInset>
-            </div>
-          </SidebarProvider>
-          <Toaster />
-        </TooltipProvider>
-      </QueryClientProvider>
-    </ThemeProvider>
+    <SidebarProvider style={style as React.CSSProperties}>
+      <div className="flex min-h-screen w-full">
+        <AppSidebar />
+        <SidebarInset className="flex flex-col flex-1">
+          <header className="sticky top-0 z-50 flex h-14 items-center justify-between gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4">
+            <SidebarTrigger data-testid="button-sidebar-toggle" />
+            <ThemeToggle />
+          </header>
+          <main className="flex-1 overflow-auto">
+            <Router />
+          </main>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
   );
 }
 

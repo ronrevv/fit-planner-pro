@@ -1,8 +1,48 @@
 import { z } from "zod";
 
-// Client Schema
+// Gym Schema
+export const gymSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, "Gym name is required"),
+  slug: z.string().min(1, "Slug is required"), // For URL or unique ID
+  address: z.string().optional(),
+  settings: z.string().optional(), // JSON string for settings
+  createdAt: z.string().optional(),
+});
+
+export const insertGymSchema = gymSchema.omit({ id: true, createdAt: true });
+export type Gym = z.infer<typeof gymSchema>;
+export type InsertGym = z.infer<typeof insertGymSchema>;
+
+// User Roles
+export const UserRole = {
+  SUPER_ADMIN: "super_admin",
+  GYM_ADMIN: "gym_admin",
+  TRAINER: "trainer",
+} as const;
+
+export type UserRoleType = typeof UserRole[keyof typeof UserRole];
+
+// User Schema (Updated)
+export const userSchema = z.object({
+  id: z.string(),
+  username: z.string().min(1, "Username is required"),
+  password: z.string().min(1, "Password is required"),
+  fullName: z.string().min(1, "Full name is required"),
+  role: z.enum([UserRole.SUPER_ADMIN, UserRole.GYM_ADMIN, UserRole.TRAINER]),
+  gymId: z.string().optional(), // Nullable for super_admin
+  createdAt: z.string().optional(),
+});
+
+export const insertUserSchema = userSchema.omit({ id: true, createdAt: true });
+export type User = z.infer<typeof userSchema>;
+export type InsertUser = z.infer<typeof insertUserSchema>;
+
+// Client Schema (Updated with gymId and trainerId)
 export const clientSchema = z.object({
   id: z.string(),
+  gymId: z.string(), // Belongs to a gym
+  trainerId: z.string(), // Assigned to a trainer
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Valid email required"),
   phone: z.string().min(10, "Phone number required"),
@@ -127,25 +167,6 @@ export const measurementLogSchema = z.object({
 export const insertMeasurementLogSchema = measurementLogSchema.omit({ id: true });
 export type MeasurementLog = z.infer<typeof measurementLogSchema>;
 export type InsertMeasurementLog = z.infer<typeof insertMeasurementLogSchema>;
-
-// User Schema (for trainers)
-export const users = {
-  id: "",
-  username: "",
-  password: "",
-};
-
-export const insertUserSchema = z.object({
-  username: z.string().min(1),
-  password: z.string().min(1),
-});
-
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = {
-  id: string;
-  username: string;
-  password: string;
-};
 
 // Goal display names
 export const goalLabels: Record<Client["goal"], string> = {

@@ -7,20 +7,148 @@ import {
   insertDietPlanSchema,
   insertInjuryLogSchema,
   insertMeasurementLogSchema,
-  insertItemCompletionSchema
+  insertItemCompletionSchema,
+  insertGymSchema,
+  insertUserSchema,
+  UserRole,
+  type User
 } from "@shared/schema";
+
+// Middleware to check if user is authenticated
+const isAuthenticated = (req: any, res: any, next: any) => {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  res.status(401).json({ message: "Unauthorized" });
+};
+
+// Middleware to check if user is Super Admin
+const isSuperAdmin = (req: any, res: any, next: any) => {
+  if (req.isAuthenticated() && req.user.role === UserRole.SUPER_ADMIN) {
+    return next();
+  }
+  res.status(403).json({ message: "Forbidden: Super Admin access required" });
+};
+
+// Middleware to check if user is Gym Admin or Super Admin
+const isGymAdmin = (req: any, res: any, next: any) => {
+  if (req.isAuthenticated() &&
+      (req.user.role === UserRole.GYM_ADMIN || req.user.role === UserRole.SUPER_ADMIN)) {
+    return next();
+  }
+  res.status(403).json({ message: "Forbidden: Gym Admin access required" });
+};
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
   
+  // ==================== GYMS & USERS (ADMIN) ====================
+
+  // Create Gym (Super Admin only)
+  app.post("/api/gyms", isSuperAdmin, async (req, res) => {
+    try {
+      const parseResult = insertGymSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({
+          message: "Invalid gym data",
+          errors: parseResult.error.errors
+        });
+      }
+
+      // Check for slug uniqueness
+      const existingGym = await storage.getGymBySlug(parseResult.data.slug);
+      if (existingGym) {
+        return res.status(409).json({ message: "Gym with this slug already exists" });
+      }
+
+      const gym = await storage.createGym(parseResult.data);
+      res.status(201).json(gym);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create gym" });
+    }
+  });
+
+  // Create User (Admin/Gym Admin)
+  app.post("/api/users", isAuthenticated, async (req, res) => {
+    try {
+      const user = (req as any).user as User;
+      const parseResult = insertUserSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({
+          message: "Invalid user data",
+          errors: parseResult.error.errors
+        });
+      }
+
+      const data = parseResult.data;
+
+      if (user.role !== UserRole.SUPER_ADMIN) {
+        // If not super admin, must be gym admin creating a trainer for THEIR gym
+        if (user.role !== UserRole.GYM_ADMIN) {
+           return res.status(403).json({ message: "Forbidden" });
+        }
+        if (data.role !== UserRole.TRAINER) {
+           return res.status(403).json({ message: "Gym Admins can only create Trainers" });
+        }
+        if (data.gymId !== user.gymId) {
+           return res.status(403).json({ message: "Cannot create user for another gym" });
+        }
+      }
+
+      const existingUser = await storage.getUserByUsername(data.username);
+      if (existingUser) {
+        return res.status(409).json({ message: "Username already taken" });
+      }
+
+      const newUser = await storage.createUser(data);
+      res.status(201).json(newUser);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create user" });
+    }
+  });
+
+  // Get Users by Gym (Gym Admin/Super Admin)
+  app.get("/api/gyms/:id/users", isAuthenticated, async (req, res) => {
+    try {
+      const user = (req as any).user as User;
+      const gymId = req.params.id;
+
+      // Access control
+      if (user.role !== UserRole.SUPER_ADMIN) {
+        if (user.role !== UserRole.GYM_ADMIN || user.gymId !== gymId) {
+           return res.status(403).json({ message: "Forbidden" });
+        }
+      }
+
+      const users = await storage.getUsersByGym(gymId);
+      res.json(users);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
   // ==================== CLIENTS ====================
   
   // Get all clients
-  app.get("/api/clients", async (req, res) => {
+  app.get("/api/clients", isAuthenticated, async (req, res) => {
     try {
-      const clients = await storage.getAllClients();
+      const user = (req as any).user as User;
+      // Context Awareness: Filter by Gym/Trainer
+      let gymId = undefined;
+      let trainerId = undefined;
+
+      if (user.role === UserRole.GYM_ADMIN) {
+        gymId = user.gymId;
+      } else if (user.role === UserRole.TRAINER) {
+        gymId = user.gymId;
+        trainerId = user.id;
+      } else if (user.role === UserRole.SUPER_ADMIN) {
+        // Super Admin sees all
+      }
+
+      const clients = await storage.getAllClients(gymId, trainerId);
       res.json(clients);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch clients" });
@@ -28,12 +156,24 @@ export async function registerRoutes(
   });
 
   // Get single client
-  app.get("/api/clients/:id", async (req, res) => {
+  app.get("/api/clients/:id", isAuthenticated, async (req, res) => {
     try {
+      const user = (req as any).user as User;
       const client = await storage.getClient(req.params.id);
       if (!client) {
         return res.status(404).json({ message: "Client not found" });
       }
+
+      // Security check: Ensure client belongs to user's gym/scope
+      if (user.role !== UserRole.SUPER_ADMIN) {
+         if (user.gymId !== client.gymId) {
+            return res.status(403).json({ message: "Access denied" });
+         }
+         if (user.role === UserRole.TRAINER && client.trainerId !== user.id) {
+            return res.status(403).json({ message: "Access denied" });
+         }
+      }
+
       res.json(client);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch client" });
@@ -41,16 +181,33 @@ export async function registerRoutes(
   });
 
   // Create client
-  app.post("/api/clients", async (req, res) => {
+  app.post("/api/clients", isAuthenticated, async (req, res) => {
     try {
-      const parseResult = insertClientSchema.safeParse(req.body);
+      const user = (req as any).user as User;
+
+      // Construct the data object merging body with auth context
+      const data = { ...req.body };
+
+      if (user.role !== UserRole.SUPER_ADMIN) {
+         if (!user.gymId) {
+             return res.status(400).json({ message: "User not associated with a gym" });
+         }
+         data.gymId = user.gymId;
+
+         if (user.role === UserRole.TRAINER) {
+            data.trainerId = user.id;
+         }
+         // If Gym Admin, they can provide trainerId in body, or we error during validation if missing
+      }
+
+      const parseResult = insertClientSchema.safeParse(data);
       if (!parseResult.success) {
         return res.status(400).json({ 
           message: "Invalid client data", 
           errors: parseResult.error.errors 
         });
       }
-      
+
       const client = await storage.createClient(parseResult.data);
       res.status(201).json(client);
     } catch (error) {
@@ -59,8 +216,19 @@ export async function registerRoutes(
   });
 
   // Update client
-  app.patch("/api/clients/:id", async (req, res) => {
+  app.patch("/api/clients/:id", isAuthenticated, async (req, res) => {
     try {
+      const user = (req as any).user as User;
+      const existing = await storage.getClient(req.params.id);
+      if (!existing) return res.status(404).json({ message: "Client not found" });
+
+      if (user.role !== UserRole.SUPER_ADMIN) {
+        if (existing.gymId !== user.gymId) return res.status(403).json({ message: "Access denied" });
+        if (user.role === UserRole.TRAINER && existing.trainerId !== user.id) {
+           return res.status(403).json({ message: "Access denied" });
+        }
+      }
+
       const parseResult = insertClientSchema.partial().safeParse(req.body);
       if (!parseResult.success) {
         return res.status(400).json({ 
@@ -70,9 +238,6 @@ export async function registerRoutes(
       }
       
       const client = await storage.updateClient(req.params.id, parseResult.data);
-      if (!client) {
-        return res.status(404).json({ message: "Client not found" });
-      }
       res.json(client);
     } catch (error) {
       res.status(500).json({ message: "Failed to update client" });
@@ -80,12 +245,20 @@ export async function registerRoutes(
   });
 
   // Delete client
-  app.delete("/api/clients/:id", async (req, res) => {
+  app.delete("/api/clients/:id", isAuthenticated, async (req, res) => {
     try {
-      const deleted = await storage.deleteClient(req.params.id);
-      if (!deleted) {
-        return res.status(404).json({ message: "Client not found" });
+      const user = (req as any).user as User;
+      const existing = await storage.getClient(req.params.id);
+      if (!existing) return res.status(404).json({ message: "Client not found" });
+
+      if (user.role !== UserRole.SUPER_ADMIN) {
+        if (existing.gymId !== user.gymId) return res.status(403).json({ message: "Access denied" });
+        if (user.role === UserRole.TRAINER && existing.trainerId !== user.id) {
+           return res.status(403).json({ message: "Access denied" });
+        }
       }
+
+      await storage.deleteClient(req.params.id);
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ message: "Failed to delete client" });
@@ -95,15 +268,38 @@ export async function registerRoutes(
   // ==================== WORKOUT PLANS ====================
 
   // Get all workout plans (optionally filtered by clientId)
-  app.get("/api/workout-plans", async (req, res) => {
+  app.get("/api/workout-plans", isAuthenticated, async (req, res) => {
     try {
+      const user = (req as any).user as User;
       const clientId = req.query.clientId as string | undefined;
       let plans;
       
       if (clientId) {
+        // Check access to client
+        const client = await storage.getClient(clientId);
+        if (client) {
+            if (user.role !== UserRole.SUPER_ADMIN) {
+                if (client.gymId !== user.gymId) return res.status(403).json({ message: "Access denied" });
+                if (user.role === UserRole.TRAINER && client.trainerId !== user.id) return res.status(403).json({ message: "Access denied" });
+            }
+        }
         plans = await storage.getWorkoutPlansByClient(clientId);
       } else {
-        plans = await storage.getAllWorkoutPlans();
+        const allPlans = await storage.getAllWorkoutPlans();
+        const accessiblePlans = [];
+
+        for (const plan of allPlans) {
+            const client = await storage.getClient(plan.clientId);
+            if (client) {
+                if (user.role === UserRole.SUPER_ADMIN) {
+                    accessiblePlans.push(plan);
+                } else if (client.gymId === user.gymId) {
+                    if (user.role === UserRole.TRAINER && client.trainerId !== user.id) continue;
+                    accessiblePlans.push(plan);
+                }
+            }
+        }
+        plans = accessiblePlans;
       }
       
       res.json(plans);
@@ -113,12 +309,22 @@ export async function registerRoutes(
   });
 
   // Get single workout plan
-  app.get("/api/workout-plans/:id", async (req, res) => {
+  app.get("/api/workout-plans/:id", isAuthenticated, async (req, res) => {
     try {
+      const user = (req as any).user as User;
       const plan = await storage.getWorkoutPlan(req.params.id);
       if (!plan) {
         return res.status(404).json({ message: "Workout plan not found" });
       }
+
+      const client = await storage.getClient(plan.clientId);
+      if (client) {
+         if (user.role !== UserRole.SUPER_ADMIN) {
+             if (client.gymId !== user.gymId) return res.status(403).json({ message: "Access denied" });
+             if (user.role === UserRole.TRAINER && client.trainerId !== user.id) return res.status(403).json({ message: "Access denied" });
+         }
+      }
+
       res.json(plan);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch workout plan" });
@@ -126,8 +332,9 @@ export async function registerRoutes(
   });
 
   // Create workout plan
-  app.post("/api/workout-plans", async (req, res) => {
+  app.post("/api/workout-plans", isAuthenticated, async (req, res) => {
     try {
+      const user = (req as any).user as User;
       const parseResult = insertWorkoutPlanSchema.safeParse(req.body);
       if (!parseResult.success) {
         return res.status(400).json({ 
@@ -136,10 +343,15 @@ export async function registerRoutes(
         });
       }
 
-      // Verify client exists
+      // Verify client exists and access
       const client = await storage.getClient(parseResult.data.clientId);
       if (!client) {
         return res.status(400).json({ message: "Client not found" });
+      }
+
+      if (user.role !== UserRole.SUPER_ADMIN) {
+          if (client.gymId !== user.gymId) return res.status(403).json({ message: "Access denied" });
+          if (user.role === UserRole.TRAINER && client.trainerId !== user.id) return res.status(403).json({ message: "Access denied" });
       }
       
       const plan = await storage.createWorkoutPlan(parseResult.data);
@@ -150,8 +362,9 @@ export async function registerRoutes(
   });
 
   // Update workout plan
-  app.patch("/api/workout-plans/:id", async (req, res) => {
+  app.patch("/api/workout-plans/:id", isAuthenticated, async (req, res) => {
     try {
+      const user = (req as any).user as User;
       const parseResult = insertWorkoutPlanSchema.partial().safeParse(req.body);
       if (!parseResult.success) {
         return res.status(400).json({ 
@@ -160,23 +373,36 @@ export async function registerRoutes(
         });
       }
       
-      const plan = await storage.updateWorkoutPlan(req.params.id, parseResult.data);
-      if (!plan) {
-        return res.status(404).json({ message: "Workout plan not found" });
+      const plan = await storage.getWorkoutPlan(req.params.id);
+      if (!plan) return res.status(404).json({ message: "Not found" });
+
+      const client = await storage.getClient(plan.clientId);
+      if (client && user.role !== UserRole.SUPER_ADMIN) {
+         if (client.gymId !== user.gymId) return res.status(403).json({ message: "Denied" });
+         if (user.role === UserRole.TRAINER && client.trainerId !== user.id) return res.status(403).json({ message: "Denied" });
       }
-      res.json(plan);
+
+      const updatedPlan = await storage.updateWorkoutPlan(req.params.id, parseResult.data);
+      res.json(updatedPlan);
     } catch (error) {
       res.status(500).json({ message: "Failed to update workout plan" });
     }
   });
 
   // Delete workout plan
-  app.delete("/api/workout-plans/:id", async (req, res) => {
+  app.delete("/api/workout-plans/:id", isAuthenticated, async (req, res) => {
     try {
-      const deleted = await storage.deleteWorkoutPlan(req.params.id);
-      if (!deleted) {
-        return res.status(404).json({ message: "Workout plan not found" });
+      const user = (req as any).user as User;
+      const plan = await storage.getWorkoutPlan(req.params.id);
+      if (!plan) return res.status(404).json({ message: "Not found" });
+
+      const client = await storage.getClient(plan.clientId);
+      if (client && user.role !== UserRole.SUPER_ADMIN) {
+         if (client.gymId !== user.gymId) return res.status(403).json({ message: "Denied" });
+         if (user.role === UserRole.TRAINER && client.trainerId !== user.id) return res.status(403).json({ message: "Denied" });
       }
+
+      await storage.deleteWorkoutPlan(req.params.id);
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ message: "Failed to delete workout plan" });
@@ -185,30 +411,49 @@ export async function registerRoutes(
 
   // ==================== DIET PLANS ====================
 
-  // Get all diet plans (optionally filtered by clientId)
-  app.get("/api/diet-plans", async (req, res) => {
+  app.get("/api/diet-plans", isAuthenticated, async (req, res) => {
     try {
+      const user = (req as any).user as User;
       const clientId = req.query.clientId as string | undefined;
       let plans;
-      
       if (clientId) {
+        const client = await storage.getClient(clientId);
+        if (client && user.role !== UserRole.SUPER_ADMIN) {
+            if (client.gymId !== user.gymId) return res.status(403).json({ message: "Denied" });
+            if (user.role === UserRole.TRAINER && client.trainerId !== user.id) return res.status(403).json({ message: "Denied" });
+        }
         plans = await storage.getDietPlansByClient(clientId);
       } else {
-        plans = await storage.getAllDietPlans();
+        const all = await storage.getAllDietPlans();
+        const accessible = [];
+        for (const p of all) {
+            const c = await storage.getClient(p.clientId);
+            if (c) {
+                if (user.role === UserRole.SUPER_ADMIN) { accessible.push(p); }
+                else if (c.gymId === user.gymId) {
+                    if (user.role === UserRole.TRAINER && c.trainerId !== user.id) continue;
+                    accessible.push(p);
+                }
+            }
+        }
+        plans = accessible;
       }
-      
       res.json(plans);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch diet plans" });
     }
   });
 
-  // Get single diet plan
-  app.get("/api/diet-plans/:id", async (req, res) => {
+  app.get("/api/diet-plans/:id", isAuthenticated, async (req, res) => {
     try {
+      const user = (req as any).user as User;
       const plan = await storage.getDietPlan(req.params.id);
-      if (!plan) {
-        return res.status(404).json({ message: "Diet plan not found" });
+      if (!plan) return res.status(404).json({ message: "Diet plan not found" });
+
+      const client = await storage.getClient(plan.clientId);
+      if (client && user.role !== UserRole.SUPER_ADMIN) {
+          if (client.gymId !== user.gymId) return res.status(403).json({ message: "Denied" });
+          if (user.role === UserRole.TRAINER && client.trainerId !== user.id) return res.status(403).json({ message: "Denied" });
       }
       res.json(plan);
     } catch (error) {
@@ -216,21 +461,18 @@ export async function registerRoutes(
     }
   });
 
-  // Create diet plan
-  app.post("/api/diet-plans", async (req, res) => {
+  app.post("/api/diet-plans", isAuthenticated, async (req, res) => {
     try {
+      const user = (req as any).user as User;
       const parseResult = insertDietPlanSchema.safeParse(req.body);
-      if (!parseResult.success) {
-        return res.status(400).json({ 
-          message: "Invalid diet plan data", 
-          errors: parseResult.error.errors 
-        });
-      }
+      if (!parseResult.success) return res.status(400).json({ message: "Invalid", errors: parseResult.error.errors });
 
-      // Verify client exists
       const client = await storage.getClient(parseResult.data.clientId);
-      if (!client) {
-        return res.status(400).json({ message: "Client not found" });
+      if (!client) return res.status(400).json({ message: "Client not found" });
+
+      if (user.role !== UserRole.SUPER_ADMIN) {
+          if (client.gymId !== user.gymId) return res.status(403).json({ message: "Denied" });
+          if (user.role === UserRole.TRAINER && client.trainerId !== user.id) return res.status(403).json({ message: "Denied" });
       }
       
       const plan = await storage.createDietPlan(parseResult.data);
@@ -240,45 +482,55 @@ export async function registerRoutes(
     }
   });
 
-  // Update diet plan
-  app.patch("/api/diet-plans/:id", async (req, res) => {
+  app.patch("/api/diet-plans/:id", isAuthenticated, async (req, res) => {
     try {
+      const user = (req as any).user as User;
+      const plan = await storage.getDietPlan(req.params.id);
+      if (!plan) return res.status(404).json({ message: "Not found" });
+      const client = await storage.getClient(plan.clientId);
+      if (client && user.role !== UserRole.SUPER_ADMIN) {
+          if (client.gymId !== user.gymId) return res.status(403).json({ message: "Denied" });
+          if (user.role === UserRole.TRAINER && client.trainerId !== user.id) return res.status(403).json({ message: "Denied" });
+      }
+
       const parseResult = insertDietPlanSchema.partial().safeParse(req.body);
-      if (!parseResult.success) {
-        return res.status(400).json({ 
-          message: "Invalid diet plan data", 
-          errors: parseResult.error.errors 
-        });
-      }
+      if (!parseResult.success) return res.status(400).json({ message: "Invalid", errors: parseResult.error.errors });
       
-      const plan = await storage.updateDietPlan(req.params.id, parseResult.data);
-      if (!plan) {
-        return res.status(404).json({ message: "Diet plan not found" });
-      }
-      res.json(plan);
+      const updated = await storage.updateDietPlan(req.params.id, parseResult.data);
+      res.json(updated);
     } catch (error) {
       res.status(500).json({ message: "Failed to update diet plan" });
     }
   });
 
-  // Delete diet plan
-  app.delete("/api/diet-plans/:id", async (req, res) => {
+  app.delete("/api/diet-plans/:id", isAuthenticated, async (req, res) => {
     try {
-      const deleted = await storage.deleteDietPlan(req.params.id);
-      if (!deleted) {
-        return res.status(404).json({ message: "Diet plan not found" });
+      const user = (req as any).user as User;
+      const plan = await storage.getDietPlan(req.params.id);
+      if (!plan) return res.status(404).json({ message: "Not found" });
+      const client = await storage.getClient(plan.clientId);
+      if (client && user.role !== UserRole.SUPER_ADMIN) {
+          if (client.gymId !== user.gymId) return res.status(403).json({ message: "Denied" });
+          if (user.role === UserRole.TRAINER && client.trainerId !== user.id) return res.status(403).json({ message: "Denied" });
       }
+      await storage.deleteDietPlan(req.params.id);
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ message: "Failed to delete diet plan" });
     }
   });
 
-  // ==================== INJURY LOGS ====================
+  // ==================== INJURY/MEASUREMENT LOGS ====================
 
-  // Get injury logs for a client
-  app.get("/api/clients/:id/injuries", async (req, res) => {
+  app.get("/api/clients/:id/injuries", isAuthenticated, async (req, res) => {
     try {
+      const user = (req as any).user as User;
+      const client = await storage.getClient(req.params.id);
+      if (!client) return res.status(404).json({ message: "Not found" });
+      if (user.role !== UserRole.SUPER_ADMIN) {
+         if (client.gymId !== user.gymId) return res.status(403).json({ message: "Denied" });
+         if (user.role === UserRole.TRAINER && client.trainerId !== user.id) return res.status(403).json({ message: "Denied" });
+      }
       const logs = await storage.getInjuryLogsByClient(req.params.id);
       res.json(logs);
     } catch (error) {
@@ -286,10 +538,16 @@ export async function registerRoutes(
     }
   });
 
-  // Create injury log
-  app.post("/api/clients/:id/injuries", async (req, res) => {
+  app.post("/api/clients/:id/injuries", isAuthenticated, async (req, res) => {
     try {
-      // Ensure clientId in body matches URL param
+      const user = (req as any).user as User;
+      const client = await storage.getClient(req.params.id);
+      if (!client) return res.status(404).json({ message: "Client not found" });
+      if (user.role !== UserRole.SUPER_ADMIN) {
+         if (client.gymId !== user.gymId) return res.status(403).json({ message: "Denied" });
+         if (user.role === UserRole.TRAINER && client.trainerId !== user.id) return res.status(403).json({ message: "Denied" });
+      }
+
       const data = { ...req.body, clientId: req.params.id };
       const parseResult = insertInjuryLogSchema.safeParse(data);
       if (!parseResult.success) {
@@ -299,12 +557,6 @@ export async function registerRoutes(
         });
       }
 
-      // Verify client exists
-      const client = await storage.getClient(req.params.id);
-      if (!client) {
-        return res.status(404).json({ message: "Client not found" });
-      }
-
       const log = await storage.createInjuryLog(parseResult.data);
       res.status(201).json(log);
     } catch (error) {
@@ -312,26 +564,17 @@ export async function registerRoutes(
     }
   });
 
-  // Delete injury log
-  app.delete("/api/injuries/:id", async (req, res) => {
+  // Same for Measurements...
+  app.get("/api/clients/:id/measurements", isAuthenticated, async (req, res) => {
     try {
-      const deleted = await storage.deleteInjuryLog(req.params.id);
-      if (!deleted) {
-        return res.status(404).json({ message: "Injury log not found" });
+      const user = (req as any).user as User;
+      const client = await storage.getClient(req.params.id);
+      if (!client) return res.status(404).json({ message: "Not found" });
+      if (user.role !== UserRole.SUPER_ADMIN) {
+         if (client.gymId !== user.gymId) return res.status(403).json({ message: "Denied" });
+         if (user.role === UserRole.TRAINER && client.trainerId !== user.id) return res.status(403).json({ message: "Denied" });
       }
-      res.status(204).send();
-    } catch (error) {
-      res.status(500).json({ message: "Failed to delete injury log" });
-    }
-  });
-
-  // ==================== MEASUREMENT LOGS ====================
-
-  // Get measurement logs for a client
-  app.get("/api/clients/:id/measurements", async (req, res) => {
-    try {
       const logs = await storage.getMeasurementLogsByClient(req.params.id);
-      // Sort logs by date descending
       logs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       res.json(logs);
     } catch (error) {
@@ -339,10 +582,16 @@ export async function registerRoutes(
     }
   });
 
-  // Create measurement log
-  app.post("/api/clients/:id/measurements", async (req, res) => {
+  app.post("/api/clients/:id/measurements", isAuthenticated, async (req, res) => {
     try {
-      // Ensure clientId in body matches URL param
+      const user = (req as any).user as User;
+      const client = await storage.getClient(req.params.id);
+      if (!client) return res.status(404).json({ message: "Client not found" });
+      if (user.role !== UserRole.SUPER_ADMIN) {
+         if (client.gymId !== user.gymId) return res.status(403).json({ message: "Denied" });
+         if (user.role === UserRole.TRAINER && client.trainerId !== user.id) return res.status(403).json({ message: "Denied" });
+      }
+
       const data = { ...req.body, clientId: req.params.id };
       const parseResult = insertMeasurementLogSchema.safeParse(data);
       if (!parseResult.success) {
@@ -352,12 +601,6 @@ export async function registerRoutes(
         });
       }
 
-      // Verify client exists
-      const client = await storage.getClient(req.params.id);
-      if (!client) {
-        return res.status(404).json({ message: "Client not found" });
-      }
-
       const log = await storage.createMeasurementLog(parseResult.data);
       res.status(201).json(log);
     } catch (error) {
@@ -365,20 +608,7 @@ export async function registerRoutes(
     }
   });
 
-  // Delete measurement log
-  app.delete("/api/measurements/:id", async (req, res) => {
-    try {
-      const deleted = await storage.deleteMeasurementLog(req.params.id);
-      if (!deleted) {
-        return res.status(404).json({ message: "Measurement log not found" });
-      }
-      res.status(204).send();
-    } catch (error) {
-      res.status(500).json({ message: "Failed to delete measurement log" });
-    }
-  });
-
-  // ==================== PUBLIC PORTAL ====================
+  // ==================== PUBLIC PORTAL (Unprotected) ====================
 
   app.get("/api/portal/:token", async (req, res) => {
     try {
@@ -392,13 +622,9 @@ export async function registerRoutes(
       const injuryLogs = await storage.getInjuryLogsByClient(client.id);
       const measurementLogs = await storage.getMeasurementLogsByClient(client.id);
 
-      // Sort logs
       measurementLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       injuryLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-      // Get latest active plans
-      // For simplicity, we'll take the most recently created ones
-      // In a real app, we might check month/year or an "active" flag
       const currentWorkoutPlan = workoutPlans[workoutPlans.length - 1] || null;
       const currentDietPlan = dietPlans[dietPlans.length - 1] || null;
 
@@ -418,8 +644,6 @@ export async function registerRoutes(
       res.status(500).json({ message: "Failed to load portal data" });
     }
   });
-
-  // ==================== ITEM COMPLETIONS ====================
 
   app.get("/api/portal/:token/completions", async (req, res) => {
     try {
