@@ -13,6 +13,7 @@ import {
   UserRole,
   type User
 } from "@shared/schema";
+import { hashPassword } from "./auth";
 
 // Middleware to check if user is authenticated
 const isAuthenticated = (req: any, res: any, next: any) => {
@@ -102,7 +103,8 @@ export async function registerRoutes(
         return res.status(409).json({ message: "Username already taken" });
       }
 
-      const newUser = await storage.createUser(data);
+      const hashedPassword = await hashPassword(data.password);
+      const newUser = await storage.createUser({ ...data, password: hashedPassword });
       res.status(201).json(newUser);
     } catch (error) {
       res.status(500).json({ message: "Failed to create user" });

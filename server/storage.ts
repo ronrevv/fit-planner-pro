@@ -112,6 +112,18 @@ export class MemStorage implements IStorage {
       gymId: this.defaultGymId,
       createdAt: new Date().toISOString()
     });
+
+    // Create default Super Admin
+    const superAdminId = randomUUID();
+    this.users.set(superAdminId, {
+      id: superAdminId,
+      username: "admin",
+      password: "password",
+      fullName: "Platform Admin",
+      role: UserRole.SUPER_ADMIN,
+      // Super admin doesn't necessarily need a gymId, but for simplicity we can leave it undefined or null
+      createdAt: new Date().toISOString()
+    });
   }
 
   // Gyms
