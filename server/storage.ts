@@ -61,6 +61,11 @@ export interface IStorage {
   // Trainer Profile
   getTrainerProfile(): Promise<import("@shared/schema").TrainerProfile | undefined>;
   updateTrainerProfile(profile: import("@shared/schema").InsertTrainerProfile): Promise<import("@shared/schema").TrainerProfile>;
+
+  // Exercise Library
+  getExerciseLibrary(): Promise<import("@shared/schema").ExerciseLibraryItem[]>;
+  createExerciseLibraryItem(item: import("@shared/schema").InsertExerciseLibraryItem): Promise<import("@shared/schema").ExerciseLibraryItem>;
+  deleteExerciseLibraryItem(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -73,6 +78,7 @@ export class MemStorage implements IStorage {
   private itemCompletions: Map<string, ItemCompletion>;
   private clientResources: Map<string, import("@shared/schema").ClientResource>;
   private trainerProfile: import("@shared/schema").TrainerProfile | undefined;
+  private exerciseLibrary: Map<string, import("@shared/schema").ExerciseLibraryItem>;
 
   constructor() {
     this.users = new Map();
@@ -83,6 +89,7 @@ export class MemStorage implements IStorage {
     this.measurementLogs = new Map();
     this.itemCompletions = new Map();
     this.clientResources = new Map();
+    this.exerciseLibrary = new Map();
   }
 
   // Users
@@ -351,6 +358,24 @@ export class MemStorage implements IStorage {
     const updatedProfile = { ...profile, id };
     this.trainerProfile = updatedProfile;
     return updatedProfile;
+  }
+
+  // Exercise Library
+  async getExerciseLibrary(): Promise<import("@shared/schema").ExerciseLibraryItem[]> {
+    return Array.from(this.exerciseLibrary.values());
+  }
+
+  async createExerciseLibraryItem(item: import("@shared/schema").InsertExerciseLibraryItem): Promise<import("@shared/schema").ExerciseLibraryItem> {
+    const id = randomUUID();
+    const newItem = { ...item, id };
+    this.exerciseLibrary.set(id, newItem);
+    return newItem;
+  }
+
+  async deleteExerciseLibraryItem(id: string): Promise<boolean> {
+    const existed = this.exerciseLibrary.has(id);
+    this.exerciseLibrary.delete(id);
+    return existed;
   }
 }
 

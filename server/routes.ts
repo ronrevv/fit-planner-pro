@@ -535,5 +535,45 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== EXERCISE LIBRARY ====================
+
+  app.get("/api/exercises", async (req, res) => {
+    try {
+      const exercises = await storage.getExerciseLibrary();
+      res.json(exercises);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch exercise library" });
+    }
+  });
+
+  app.post("/api/exercises", async (req, res) => {
+    try {
+      const parseResult = insertExerciseLibrarySchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({
+          message: "Invalid exercise data",
+          errors: parseResult.error.errors
+        });
+      }
+
+      const exercise = await storage.createExerciseLibraryItem(parseResult.data);
+      res.status(201).json(exercise);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to add exercise to library" });
+    }
+  });
+
+  app.delete("/api/exercises/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteExerciseLibraryItem(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Exercise not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete exercise" });
+    }
+  });
+
   return httpServer;
 }
