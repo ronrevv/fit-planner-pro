@@ -27,6 +27,7 @@ export const exerciseSchema = z.object({
   reps: z.number().min(1).max(100),
   restSeconds: z.number().min(0).max(600),
   notes: z.string().optional(),
+  videoUrl: z.string().optional(),
 });
 
 export type Exercise = z.infer<typeof exerciseSchema>;
@@ -36,6 +37,7 @@ export const dayWorkoutSchema = z.object({
   day: z.number().min(1).max(31),
   isRestDay: z.boolean(),
   exercises: z.array(exerciseSchema),
+  warmup: z.array(exerciseSchema).optional(),
   notes: z.string().optional(),
 });
 
@@ -224,3 +226,16 @@ export const trainerProfileSchema = z.object({
 export const insertTrainerProfileSchema = trainerProfileSchema.omit({ id: true });
 export type TrainerProfile = z.infer<typeof trainerProfileSchema>;
 export type InsertTrainerProfile = z.infer<typeof insertTrainerProfileSchema>;
+
+// Exercise Library Schema
+export const exerciseLibrarySchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, "Name is required"),
+  category: z.string().min(1, "Category is required"),
+  videoUrl: z.string().optional(),
+  description: z.string().optional(),
+});
+
+export const insertExerciseLibrarySchema = exerciseLibrarySchema.omit({ id: true });
+export type ExerciseLibraryItem = z.infer<typeof exerciseLibrarySchema>;
+export type InsertExerciseLibraryItem = z.infer<typeof insertExerciseLibrarySchema>;

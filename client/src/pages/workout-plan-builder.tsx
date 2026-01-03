@@ -47,7 +47,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { generateWorkoutPDF, downloadPDF, shareToWhatsApp } from "@/lib/pdf-generator";
 import { cn } from "@/lib/utils";
 import { EXERCISES_LIST } from "@/lib/exercises";
-import type { Client, WorkoutPlan, DayWorkout, Exercise } from "@shared/schema";
+import type { Client, WorkoutPlan, DayWorkout, Exercise, ExerciseLibraryItem } from "@shared/schema";
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -71,19 +71,47 @@ function generateEmptyDays(month: number, year: number): DayWorkout[] {
 function ExerciseForm({ 
   exercise, 
   onChange, 
-  onRemove 
+  onRemove,
+  library = []
 }: { 
   exercise: Exercise; 
   onChange: (exercise: Exercise) => void;
   onRemove: () => void;
+  library?: ExerciseLibraryItem[];
 }) {
   const [open, setOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
 
   const handleSelect = (currentValue: string) => {
-    onChange({ ...exercise, name: currentValue });
+    // Check if it's from library
+    const libItem = library.find(item => item.name.toLowerCase() === currentValue.toLowerCase());
+    if (libItem) {
+      onChange({
+        ...exercise,
+        name: libItem.name,
+        videoUrl: libItem.videoUrl
+      });
+    } else {
+      // Find case-insensitive match in EXERCISES_LIST if not in library
+      // This helps if we selected something from the default list
+      onChange({ ...exercise, name: currentValue });
+    }
     setOpen(false);
   };
+
+  // Group library by category
+  const groupedLibrary = library.reduce((acc, item) => {
+    if (!acc[item.category]) acc[item.category] = [];
+    acc[item.category].push(item);
+    return acc;
+  }, {} as Record<string, ExerciseLibraryItem[]>);
+
+  // Merge with default EXERCISES_LIST if library is empty or for fallback
+  // Actually, let's prefer library if available, but keep EXERCISES_LIST structure for grouping if needed
+  // If we have library items, we use them. If not, we might fall back to EXERCISES_LIST?
+  // User wants "Global Exercise Library". Let's mix them or rely on library.
+  // The user says "no one gonna add", so the library is key.
+  // Let's assume the library is the source of truth, but we can augment `groupedLibrary` if it's empty.
 
   return (
     <div className="flex flex-col gap-3 p-4 rounded-lg bg-muted/50 border border-border/50">
@@ -119,25 +147,57 @@ function ExerciseForm({
                     Use "{searchValue}"
                   </Button>
                 </CommandEmpty>
-                {EXERCISES_LIST.map((group) => (
-                  <CommandGroup key={group.category} heading={group.category}>
-                    {group.items.map((item) => (
-                      <CommandItem
-                        key={item}
-                        value={item}
-                        onSelect={handleSelect}
-                      >
-                        <CheckCircle
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            exercise.name === item ? "opacity-100" : "opacity-0"
+                {/* Render Library Items */}
+                {Object.entries(groupedLibrary).length > 0 ? (
+                  Object.entries(groupedLibrary).map(([category, items]) => (
+                    <CommandGroup key={category} heading={category}>
+                      {items.map((item) => (
+                        <CommandItem
+                          key={item.id}
+                          value={item.name}
+                          onSelect={handleSelect}
+                          className="flex items-center justify-between"
+                        >
+                          <div className="flex items-center">
+                            <CheckCircle
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                exercise.name === item.name ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {item.name}
+                          </div>
+                          {item.videoUrl && (
+                             <div className="w-8 h-8 rounded overflow-hidden bg-muted ml-2">
+                               <img src={item.videoUrl} className="w-full h-full object-cover" />
+                             </div>
                           )}
-                        />
-                        {item}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                ))}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  ))
+                ) : (
+                  // Fallback to static list if library is empty
+                  EXERCISES_LIST.map((group) => (
+                    <CommandGroup key={group.category} heading={group.category}>
+                      {group.items.map((item) => (
+                        <CommandItem
+                          key={item}
+                          value={item}
+                          onSelect={handleSelect}
+                        >
+                          <CheckCircle
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              exercise.name === item ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {item}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  ))
+                )}
               </CommandList>
             </Command>
           </PopoverContent>
@@ -153,6 +213,13 @@ function ExerciseForm({
           <Trash2 className="h-4 w-4" />
         </Button>
       </div>
+
+      {exercise.videoUrl && (
+        <div className="w-full aspect-video rounded-md overflow-hidden bg-black/5 mt-2">
+          <img src={exercise.videoUrl} alt={exercise.name} className="w-full h-full object-contain" />
+        </div>
+      )}
+
       <div className="grid grid-cols-3 gap-3">
         <div>
           <Label className="text-xs text-muted-foreground">Sets</Label>
@@ -201,12 +268,14 @@ function ExerciseForm({
 
 function DayEditor({ 
   day, 
-  onChange 
+  onChange,
+  library = []
 }: { 
   day: DayWorkout; 
   onChange: (day: DayWorkout) => void;
+  library?: ExerciseLibraryItem[];
 }) {
-  const addExercise = () => {
+  const addExercise = (isWarmup: boolean = false) => {
     const newExercise: Exercise = {
       id: crypto.randomUUID(),
       name: "",
@@ -215,27 +284,48 @@ function DayEditor({
       restSeconds: 60,
       notes: "",
     };
-    onChange({
-      ...day,
-      exercises: [...day.exercises, newExercise],
-    });
+
+    if (isWarmup) {
+      onChange({
+        ...day,
+        warmup: [...(day.warmup || []), newExercise],
+      });
+    } else {
+      onChange({
+        ...day,
+        exercises: [...day.exercises, newExercise],
+      });
+    }
   };
 
-  const updateExercise = (index: number, exercise: Exercise) => {
-    const newExercises = [...day.exercises];
-    newExercises[index] = exercise;
-    onChange({ ...day, exercises: newExercises });
+  const updateExercise = (index: number, exercise: Exercise, isWarmup: boolean = false) => {
+    if (isWarmup) {
+      const newWarmup = [...(day.warmup || [])];
+      newWarmup[index] = exercise;
+      onChange({ ...day, warmup: newWarmup });
+    } else {
+      const newExercises = [...day.exercises];
+      newExercises[index] = exercise;
+      onChange({ ...day, exercises: newExercises });
+    }
   };
 
-  const removeExercise = (index: number) => {
-    onChange({
-      ...day,
-      exercises: day.exercises.filter((_, i) => i !== index),
-    });
+  const removeExercise = (index: number, isWarmup: boolean = false) => {
+    if (isWarmup) {
+      onChange({
+        ...day,
+        warmup: (day.warmup || []).filter((_, i) => i !== index),
+      });
+    } else {
+      onChange({
+        ...day,
+        exercises: day.exercises.filter((_, i) => i !== index),
+      });
+    }
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Switch
@@ -245,37 +335,71 @@ function DayEditor({
           />
           <Label className="text-sm font-medium">Rest Day</Label>
         </div>
-        {day.exercises.length > 0 && (
-          <Badge variant="secondary">
-            {day.exercises.length} exercise{day.exercises.length !== 1 ? 's' : ''}
-          </Badge>
-        )}
       </div>
 
       {!day.isRestDay && (
-        <>
-          <ScrollArea className="h-[400px] pr-4">
-            <div className="space-y-3">
+        <ScrollArea className="h-[500px] pr-4">
+          {/* Warmup Section */}
+          <div className="mb-6">
+             <div className="flex items-center justify-between mb-2">
+               <Label className="font-semibold flex items-center gap-2">
+                 Warmup Section
+                 <Badge variant="outline" className="text-xs">{day.warmup?.length || 0}</Badge>
+               </Label>
+             </div>
+
+             <div className="space-y-3 mb-2">
+              {(day.warmup || []).map((exercise, index) => (
+                <ExerciseForm
+                  key={exercise.id}
+                  exercise={exercise}
+                  onChange={(ex) => updateExercise(index, ex, true)}
+                  onRemove={() => removeExercise(index, true)}
+                  library={library}
+                />
+              ))}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full border border-dashed"
+              onClick={() => addExercise(true)}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Warmup Exercise
+            </Button>
+          </div>
+
+          {/* Main Workout Section */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-2">
+               <Label className="font-semibold flex items-center gap-2">
+                 Main Workout
+                 <Badge variant="outline" className="text-xs">{day.exercises.length}</Badge>
+               </Label>
+             </div>
+            <div className="space-y-3 mb-2">
               {day.exercises.map((exercise, index) => (
                 <ExerciseForm
                   key={exercise.id}
                   exercise={exercise}
-                  onChange={(ex) => updateExercise(index, ex)}
-                  onRemove={() => removeExercise(index)}
+                  onChange={(ex) => updateExercise(index, ex, false)}
+                  onRemove={() => removeExercise(index, false)}
+                  library={library}
                 />
               ))}
             </div>
-          </ScrollArea>
-          <Button 
-            variant="outline" 
-            className="w-full" 
-            onClick={addExercise}
-            data-testid={`button-add-exercise-day-${day.day}`}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Exercise
-          </Button>
-        </>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => addExercise(false)}
+              data-testid={`button-add-exercise-day-${day.day}`}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Exercise
+            </Button>
+          </div>
+        </ScrollArea>
       )}
 
       <div>
@@ -314,6 +438,10 @@ export default function WorkoutPlanBuilder() {
 
   const { data: clients = [] } = useQuery<Client[]>({
     queryKey: ['/api/clients'],
+  });
+
+  const { data: exerciseLibrary = [] } = useQuery<ExerciseLibraryItem[]>({
+    queryKey: ['/api/exercises'],
   });
 
   const { data: existingPlan, isLoading: planLoading } = useQuery<WorkoutPlan>({
@@ -757,7 +885,7 @@ export default function WorkoutPlanBuilder() {
           </CardHeader>
           <CardContent>
             {currentDay && (
-              <DayEditor day={currentDay} onChange={handleDayChange} />
+              <DayEditor day={currentDay} onChange={handleDayChange} library={exerciseLibrary} />
             )}
           </CardContent>
         </Card>

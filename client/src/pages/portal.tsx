@@ -182,39 +182,98 @@ export default function Portal() {
                               {day.isRestDay && <Badge variant="secondary" className="text-xs ml-2">Rest Day</Badge>}
                             </h4>
                             {!day.isRestDay && (
-                              <div className="grid gap-2">
-                                {day.exercises.map((ex) => (
-                                  <div key={ex.id} className="text-sm border rounded-lg p-3 bg-card hover:bg-accent/50 transition-colors">
-                                    <div className="flex items-start gap-3">
-                                      <Checkbox
-                                        id={`ex-${ex.id}`}
-                                        checked={isCompleted('workout', ex.id)}
-                                        onCheckedChange={(checked) => {
-                                          if (currentWorkoutPlan) {
-                                            toggleCompletionMutation.mutate({
-                                              planId: currentWorkoutPlan.id,
-                                              type: 'workout',
-                                              itemId: ex.id,
-                                              completed: !!checked
-                                            });
-                                          }
-                                        }}
-                                      />
-                                      <div className="flex-1">
-                                        <div className="flex justify-between items-start mb-1">
-                                          <label
-                                            htmlFor={`ex-${ex.id}`}
-                                            className={`font-medium cursor-pointer ${isCompleted('workout', ex.id) ? 'line-through text-muted-foreground' : ''}`}
-                                          >
-                                            {ex.name}
-                                          </label>
-                                          <span className="text-muted-foreground text-xs">{ex.sets} x {ex.reps}</span>
+                              <div className="space-y-4">
+                                {/* Warmup */}
+                                {day.warmup && day.warmup.length > 0 && (
+                                  <div>
+                                    <h5 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Warmup</h5>
+                                    <div className="grid gap-2">
+                                      {day.warmup.map((ex) => (
+                                        <div key={ex.id} className="text-sm border rounded-lg p-3 bg-card hover:bg-accent/50 transition-colors">
+                                          <div className="flex items-start gap-3">
+                                            <Checkbox
+                                              id={`wu-${ex.id}`}
+                                              checked={isCompleted('workout', ex.id)}
+                                              onCheckedChange={(checked) => {
+                                                if (currentWorkoutPlan) {
+                                                  toggleCompletionMutation.mutate({
+                                                    planId: currentWorkoutPlan.id,
+                                                    type: 'workout',
+                                                    itemId: ex.id,
+                                                    completed: !!checked
+                                                  });
+                                                }
+                                              }}
+                                            />
+                                            <div className="flex-1">
+                                              <div className="flex justify-between items-start mb-1">
+                                                <label
+                                                  htmlFor={`wu-${ex.id}`}
+                                                  className={`font-medium cursor-pointer ${isCompleted('workout', ex.id) ? 'line-through text-muted-foreground' : ''}`}
+                                                >
+                                                  {ex.name}
+                                                </label>
+                                                <span className="text-muted-foreground text-xs">{ex.sets} x {ex.reps}</span>
+                                              </div>
+                                              {ex.videoUrl && (
+                                                <div className="my-2 rounded-md overflow-hidden bg-black/5 w-fit">
+                                                  <img src={ex.videoUrl} alt={ex.name} className="h-24 w-auto object-contain" />
+                                                </div>
+                                              )}
+                                              {ex.notes && <p className="text-xs text-muted-foreground">{ex.notes}</p>}
+                                            </div>
+                                          </div>
                                         </div>
-                                        {ex.notes && <p className="text-xs text-muted-foreground">{ex.notes}</p>}
-                                      </div>
+                                      ))}
                                     </div>
                                   </div>
-                                ))}
+                                )}
+
+                                {/* Main Workout */}
+                                <div>
+                                  {day.warmup && day.warmup.length > 0 && (
+                                     <h5 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Main Workout</h5>
+                                  )}
+                                  <div className="grid gap-2">
+                                    {day.exercises.map((ex) => (
+                                      <div key={ex.id} className="text-sm border rounded-lg p-3 bg-card hover:bg-accent/50 transition-colors">
+                                        <div className="flex items-start gap-3">
+                                          <Checkbox
+                                            id={`ex-${ex.id}`}
+                                            checked={isCompleted('workout', ex.id)}
+                                            onCheckedChange={(checked) => {
+                                              if (currentWorkoutPlan) {
+                                                toggleCompletionMutation.mutate({
+                                                  planId: currentWorkoutPlan.id,
+                                                  type: 'workout',
+                                                  itemId: ex.id,
+                                                  completed: !!checked
+                                                });
+                                              }
+                                            }}
+                                          />
+                                          <div className="flex-1">
+                                            <div className="flex justify-between items-start mb-1">
+                                              <label
+                                                htmlFor={`ex-${ex.id}`}
+                                                className={`font-medium cursor-pointer ${isCompleted('workout', ex.id) ? 'line-through text-muted-foreground' : ''}`}
+                                              >
+                                                {ex.name}
+                                              </label>
+                                              <span className="text-muted-foreground text-xs">{ex.sets} x {ex.reps}</span>
+                                            </div>
+                                            {ex.videoUrl && (
+                                              <div className="my-2 rounded-md overflow-hidden bg-black/5 w-fit">
+                                                <img src={ex.videoUrl} alt={ex.name} className="h-24 w-auto object-contain" />
+                                              </div>
+                                            )}
+                                            {ex.notes && <p className="text-xs text-muted-foreground">{ex.notes}</p>}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
                               </div>
                             )}
                             <Separator />
