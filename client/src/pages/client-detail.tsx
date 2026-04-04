@@ -263,7 +263,7 @@ export default function ClientDetail() {
 
   if (clientLoading) {
     return (
-      <div className="p-6 max-w-5xl mx-auto space-y-6">
+      <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-4 sm:space-y-6">
         <div className="flex items-center gap-4">
           <Skeleton className="h-10 w-10" />
           <div className="space-y-2">
@@ -289,7 +289,7 @@ export default function ClientDetail() {
 
   if (!client) {
     return (
-      <div className="p-6 max-w-5xl mx-auto">
+      <div className="p-4 sm:p-6 max-w-5xl mx-auto">
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <h3 className="font-semibold text-lg mb-2">Client not found</h3>
@@ -319,9 +319,9 @@ export default function ClientDetail() {
   const clientDietPlans = dietPlans.filter(p => p.clientId === params.id);
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Button 
             variant="ghost" 
@@ -338,7 +338,7 @@ export default function ClientDetail() {
             <p className="text-muted-foreground">Client Profile</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" data-testid="button-portal-options">

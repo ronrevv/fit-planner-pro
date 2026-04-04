@@ -97,7 +97,7 @@ function ExercisePickerDialog({
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-w-5xl w-full h-[90vh] flex flex-col p-0 gap-0">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b">
           <div>
             <DialogTitle className="text-xl flex items-center gap-2">
               <Dumbbell className="h-5 w-5 text-primary" />
@@ -111,7 +111,7 @@ function ExercisePickerDialog({
         </div>
 
         {/* Search */}
-        <div className="px-6 py-3 border-b">
+        <div className="px-4 sm:px-6 py-3 border-b">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -125,7 +125,7 @@ function ExercisePickerDialog({
         </div>
 
         {/* Category Tabs */}
-        <div className="px-6 py-2 border-b overflow-x-auto">
+        <div className="px-4 sm:px-6 py-2 border-b overflow-x-auto">
           <div className="flex gap-1.5 min-w-max">
             {categories.map((cat) => (
               <button
@@ -145,7 +145,7 @@ function ExercisePickerDialog({
         </div>
 
         {/* Exercise Grid */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
           {filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
               <Dumbbell className="h-10 w-10 opacity-20 mb-3" />
@@ -691,10 +691,10 @@ export default function WorkoutPlanBuilder() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
           <Button 
             variant="ghost" 
             size="icon" 
@@ -713,7 +713,7 @@ export default function WorkoutPlanBuilder() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {selectedClient && (
             <>
               <Button 

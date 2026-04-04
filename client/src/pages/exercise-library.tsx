@@ -57,28 +57,27 @@ export default function ExerciseLibrary() {
 
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Exercise Library</h1>
-          <p className="text-muted-foreground">Manage the global list of exercises and videos.</p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Exercise Library</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Manage the global list of exercises and videos.</p>
         </div>
-        <Button onClick={handleAddClick}><Plus className="h-4 w-4 mr-2" />Add Exercise</Button>
-
+        <Button onClick={handleAddClick} className="w-full sm:w-auto"><Plus className="h-4 w-4 mr-2" />Add Exercise</Button>
       </div>
 
-      <div className="flex gap-4">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search exercises..."
-            className="pl-8"
+            className="pl-8 w-full"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
         <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="Category" />
           </SelectTrigger>
           <SelectContent>
