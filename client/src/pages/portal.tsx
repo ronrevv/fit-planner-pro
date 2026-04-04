@@ -216,8 +216,12 @@ export default function Portal() {
                                                 <span className="text-muted-foreground text-xs">{ex.sets} x {ex.reps}</span>
                                               </div>
                                               {ex.videoUrl && (
-                                                <div className="my-2 rounded-md overflow-hidden bg-black/5 w-fit">
-                                                  <img src={ex.videoUrl} alt={ex.name} className="h-24 w-auto object-contain" />
+                                                <div className="my-3 rounded-lg overflow-hidden bg-black/5 border border-border/50 shadow-sm transition-all hover:shadow-md">
+                                                  <img 
+                                                    src={ex.videoUrl} 
+                                                    alt={ex.name} 
+                                                    className="w-full h-48 object-contain mix-blend-multiply transition-transform hover:scale-[1.02]" 
+                                                  />
                                                 </div>
                                               )}
                                               {ex.notes && <p className="text-xs text-muted-foreground">{ex.notes}</p>}
@@ -263,8 +267,12 @@ export default function Portal() {
                                               <span className="text-muted-foreground text-xs">{ex.sets} x {ex.reps}</span>
                                             </div>
                                             {ex.videoUrl && (
-                                              <div className="my-2 rounded-md overflow-hidden bg-black/5 w-fit">
-                                                <img src={ex.videoUrl} alt={ex.name} className="h-24 w-auto object-contain" />
+                                              <div className="my-3 rounded-lg overflow-hidden bg-black/5 border border-border/50 shadow-sm transition-all hover:shadow-md">
+                                                <img 
+                                                  src={ex.videoUrl} 
+                                                  alt={ex.name} 
+                                                  className="w-full h-48 object-contain mix-blend-multiply transition-transform hover:scale-[1.02]" 
+                                                />
                                               </div>
                                             )}
                                             {ex.notes && <p className="text-xs text-muted-foreground">{ex.notes}</p>}

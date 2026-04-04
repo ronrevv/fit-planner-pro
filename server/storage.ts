@@ -68,6 +68,8 @@ export interface IStorage {
   deleteExerciseLibraryItem(id: string): Promise<boolean>;
 }
 
+import { FULL_EXERCISES_DATA } from "../shared/exercises-data";
+
 export class MemStorage implements IStorage {
   private users: Map<string, User>;
   private clients: Map<string, Client>;
@@ -90,6 +92,17 @@ export class MemStorage implements IStorage {
     this.itemCompletions = new Map();
     this.clientResources = new Map();
     this.exerciseLibrary = new Map();
+
+    // Initial seeding for Exercise Library with FULL DATASET
+    FULL_EXERCISES_DATA.forEach(item => {
+      this.exerciseLibrary.set(item.id, { 
+        id: item.id,
+        name: item.name,
+        category: item.category,
+        videoUrl: item.videoUrl,
+        description: `Target: ${item.target} | Equipment: ${item.equipment}`
+      });
+    });
   }
 
   // Users

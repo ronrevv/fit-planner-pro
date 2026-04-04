@@ -9,7 +9,8 @@ import {
   insertMeasurementLogSchema,
   insertItemCompletionSchema,
   insertClientResourceSchema,
-  insertTrainerProfileSchema
+  insertTrainerProfileSchema,
+  insertExerciseLibrarySchema
 } from "@shared/schema";
 
 export async function registerRoutes(

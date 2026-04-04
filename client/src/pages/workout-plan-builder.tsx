@@ -46,7 +46,6 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { generateWorkoutPDF, downloadPDF, shareToWhatsApp } from "@/lib/pdf-generator";
 import { cn } from "@/lib/utils";
-import { EXERCISES_LIST } from "@/lib/exercises";
 import type { Client, WorkoutPlan, DayWorkout, Exercise, ExerciseLibraryItem } from "@shared/schema";
 
 const MONTH_NAMES = [
@@ -83,8 +82,8 @@ function ExerciseForm({
   const [searchValue, setSearchValue] = useState("");
 
   const handleSelect = (currentValue: string) => {
-    // Check if it's from library
     const libItem = library.find(item => item.name.toLowerCase() === currentValue.toLowerCase());
+    
     if (libItem) {
       onChange({
         ...exercise,
@@ -92,8 +91,6 @@ function ExerciseForm({
         videoUrl: libItem.videoUrl
       });
     } else {
-      // Find case-insensitive match in EXERCISES_LIST if not in library
-      // This helps if we selected something from the default list
       onChange({ ...exercise, name: currentValue });
     }
     setOpen(false);
@@ -148,56 +145,37 @@ function ExerciseForm({
                   </Button>
                 </CommandEmpty>
                 {/* Render Library Items */}
-                {Object.entries(groupedLibrary).length > 0 ? (
-                  Object.entries(groupedLibrary).map(([category, items]) => (
-                    <CommandGroup key={category} heading={category}>
-                      {items.map((item) => (
-                        <CommandItem
-                          key={item.id}
-                          value={item.name}
-                          onSelect={handleSelect}
-                          className="flex items-center justify-between"
-                        >
-                          <div className="flex items-center">
-                            <CheckCircle
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                exercise.name === item.name ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            {item.name}
-                          </div>
-                          {item.videoUrl && (
-                             <div className="w-8 h-8 rounded overflow-hidden bg-muted ml-2">
-                               <img src={item.videoUrl} className="w-full h-full object-cover" />
-                             </div>
-                          )}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  ))
-                ) : (
-                  // Fallback to static list if library is empty
-                  EXERCISES_LIST.map((group) => (
-                    <CommandGroup key={group.category} heading={group.category}>
-                      {group.items.map((item) => (
-                        <CommandItem
-                          key={item}
-                          value={item}
-                          onSelect={handleSelect}
-                        >
+                {Object.entries(groupedLibrary).map(([category, items]) => (
+                  <CommandGroup key={category} heading={category}>
+                    {items.map((item) => (
+                      <CommandItem
+                        key={item.id}
+                        value={item.name}
+                        onSelect={handleSelect}
+                        className="flex items-center justify-between"
+                      >
+                        <div className="flex items-center">
                           <CheckCircle
                             className={cn(
                               "mr-2 h-4 w-4",
-                              exercise.name === item ? "opacity-100" : "opacity-0"
+                              exercise.name === item.name ? "opacity-100" : "opacity-0"
                             )}
                           />
-                          {item}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  ))
-                )}
+                          {item.name}
+                        </div>
+                        {item.videoUrl && (
+                          <div className="w-12 h-12 rounded overflow-hidden bg-white ml-2 border border-border/50">
+                            <img 
+                              src={item.videoUrl} 
+                              alt={item.name}
+                              className="w-full h-full object-contain hover:scale-110 transition-transform duration-300" 
+                            />
+                          </div>
+                        )}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                ))}
               </CommandList>
             </Command>
           </PopoverContent>
@@ -215,8 +193,15 @@ function ExerciseForm({
       </div>
 
       {exercise.videoUrl && (
-        <div className="w-full aspect-video rounded-md overflow-hidden bg-black/5 mt-2">
-          <img src={exercise.videoUrl} alt={exercise.name} className="w-full h-full object-contain" />
+        <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-white mt-2 ring-1 ring-border/50 shadow-sm p-4">
+          <img 
+            src={exercise.videoUrl} 
+            alt={exercise.name} 
+            className="w-full h-full object-contain group-hover:scale-105 transition-transform" 
+          />
+          <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded bg-black/60 text-[10px] text-white font-medium backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity">
+            Visual Guide
+          </div>
         </div>
       )}
 
