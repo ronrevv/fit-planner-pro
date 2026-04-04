@@ -3,7 +3,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, useLocation, useSearch } from "wouter";
 import { 
   ArrowLeft, Save, Loader2, Dumbbell, Plus, Trash2, Calendar, 
-  ChevronLeft, ChevronRight, Download, Share2, Copy, Check, CheckCircle
+  ChevronLeft, ChevronRight, Download, Share2, Copy, Check, CheckCircle,
+  Search, X
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -67,6 +68,148 @@ function generateEmptyDays(month: number, year: number): DayWorkout[] {
   }));
 }
 
+// --- Full-Screen Exercise Picker Dialog ---
+function ExercisePickerDialog({
+  open,
+  onClose,
+  onSelect,
+  library,
+  currentName,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSelect: (item: ExerciseLibraryItem) => void;
+  library: ExerciseLibraryItem[];
+  currentName?: string;
+}) {
+  const [search, setSearch] = useState("");
+  const [activeCategory, setActiveCategory] = useState("All");
+
+  const categories = ["All", ...Array.from(new Set(library.map((e) => e.category))).sort()];
+
+  const filtered = library.filter((ex) => {
+    const matchesSearch = ex.name.toLowerCase().includes(search.toLowerCase());
+    const matchesCategory = activeCategory === "All" || ex.category === activeCategory;
+    return matchesSearch && matchesCategory;
+  }).slice(0, 60);
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-5xl w-full h-[90vh] flex flex-col p-0 gap-0">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b">
+          <div>
+            <DialogTitle className="text-xl flex items-center gap-2">
+              <Dumbbell className="h-5 w-5 text-primary" />
+              Exercise Library
+            </DialogTitle>
+            <p className="text-sm text-muted-foreground mt-0.5">Select an exercise to add to this day</p>
+          </div>
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Search */}
+        <div className="px-6 py-3 border-b">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search exercises e.g. bench press, squat..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+              autoFocus
+            />
+          </div>
+        </div>
+
+        {/* Category Tabs */}
+        <div className="px-6 py-2 border-b overflow-x-auto">
+          <div className="flex gap-1.5 min-w-max">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setActiveCategory(cat)}
+                className={cn(
+                  "px-3 py-1 rounded-full text-xs font-medium transition-all whitespace-nowrap",
+                  activeCategory === cat
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                )}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Exercise Grid */}
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          {filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+              <Dumbbell className="h-10 w-10 opacity-20 mb-3" />
+              <p className="text-sm">No exercises found. Try a different search.</p>
+            </div>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground mb-3">
+                Showing {filtered.length} of {activeCategory === "All" ? library.length : library.filter(e => e.category === activeCategory).length} exercises
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {filtered.map((item) => {
+                  const isSelected = currentName === item.name;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => { onSelect(item); onClose(); }}
+                      className={cn(
+                        "group rounded-xl border-2 overflow-hidden text-left transition-all hover:shadow-lg hover:scale-[1.02] bg-card",
+                        isSelected ? "border-primary shadow-md" : "border-border/40 hover:border-primary/50"
+                      )}
+                    >
+                      {/* GIF Preview */}
+                      <div className="aspect-square bg-white relative overflow-hidden">
+                        {item.videoUrl ? (
+                          <img
+                            src={item.videoUrl}
+                            alt={item.name}
+                            className="w-full h-full object-contain"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Dumbbell className="h-8 w-8 opacity-10" />
+                          </div>
+                        )}
+                        {isSelected && (
+                          <div className="absolute inset-0 bg-primary/10 flex items-center justify-center">
+                            <CheckCircle className="h-8 w-8 text-primary" />
+                          </div>
+                        )}
+                        <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/50 to-transparent p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <span className="text-[10px] text-white/80">{item.description}</span>
+                        </div>
+                      </div>
+                      {/* Info */}
+                      <div className="p-2.5">
+                        <p className="text-xs font-semibold leading-tight line-clamp-2">{item.name}</p>
+                        <Badge variant="outline" className="text-[9px] mt-1 uppercase tracking-wide">{item.category}</Badge>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// --- ExerciseForm (simplified card with picker) ---
 function ExerciseForm({ 
   exercise, 
   onChange, 
@@ -78,176 +221,117 @@ function ExerciseForm({
   onRemove: () => void;
   library?: ExerciseLibraryItem[];
 }) {
-  const [open, setOpen] = useState(false);
-  const [searchValue, setSearchValue] = useState("");
+  const [pickerOpen, setPickerOpen] = useState(false);
 
-  const handleSelect = (currentValue: string) => {
-    const libItem = library.find(item => item.name.toLowerCase() === currentValue.toLowerCase());
-    
-    if (libItem) {
-      onChange({
-        ...exercise,
-        name: libItem.name,
-        videoUrl: libItem.videoUrl
-      });
-    } else {
-      onChange({ ...exercise, name: currentValue });
-    }
-    setOpen(false);
+  const handleSelect = (item: ExerciseLibraryItem) => {
+    onChange({
+      ...exercise,
+      name: item.name,
+      videoUrl: item.videoUrl,
+    });
   };
 
-  // Group library by category
-  const groupedLibrary = library.reduce((acc, item) => {
-    if (!acc[item.category]) acc[item.category] = [];
-    acc[item.category].push(item);
-    return acc;
-  }, {} as Record<string, ExerciseLibraryItem[]>);
-
-  // Merge with default EXERCISES_LIST if library is empty or for fallback
-  // Actually, let's prefer library if available, but keep EXERCISES_LIST structure for grouping if needed
-  // If we have library items, we use them. If not, we might fall back to EXERCISES_LIST?
-  // User wants "Global Exercise Library". Let's mix them or rely on library.
-  // The user says "no one gonna add", so the library is key.
-  // Let's assume the library is the source of truth, but we can augment `groupedLibrary` if it's empty.
-
   return (
-    <div className="flex flex-col gap-3 p-4 rounded-lg bg-muted/50 border border-border/50">
-      <div className="flex items-start justify-between gap-2">
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              role="combobox"
-              aria-expanded={open}
-              className="flex-1 justify-between font-medium"
-              data-testid={`input-exercise-name-${exercise.id}`}
-            >
-              {exercise.name || "Select exercise..."}
-              <Dumbbell className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[300px] p-0" align="start">
-            <Command>
-              <CommandInput
-                placeholder="Search exercise..."
-                value={searchValue}
-                onValueChange={setSearchValue}
-              />
-              <CommandList>
-                <CommandEmpty>
-                  <p className="p-2 text-sm text-muted-foreground">No exercise found.</p>
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start h-auto p-2"
-                    onClick={() => handleSelect(searchValue)}
-                  >
-                    Use "{searchValue}"
-                  </Button>
-                </CommandEmpty>
-                {/* Render Library Items */}
-                {Object.entries(groupedLibrary).map(([category, items]) => (
-                  <CommandGroup key={category} heading={category}>
-                    {items.map((item) => (
-                      <CommandItem
-                        key={item.id}
-                        value={item.name}
-                        onSelect={handleSelect}
-                        className="flex items-center justify-between"
-                      >
-                        <div className="flex items-center">
-                          <CheckCircle
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              exercise.name === item.name ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          {item.name}
-                        </div>
-                        {item.videoUrl && (
-                          <div className="w-12 h-12 rounded overflow-hidden bg-white ml-2 border border-border/50">
-                            <img 
-                              src={item.videoUrl} 
-                              alt={item.name}
-                              className="w-full h-full object-contain hover:scale-110 transition-transform duration-300" 
-                            />
-                          </div>
-                        )}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                ))}
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
+    <>
+      <ExercisePickerDialog
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onSelect={handleSelect}
+        library={library}
+        currentName={exercise.name}
+      />
 
-        <Button 
-          variant="ghost" 
-          size="icon"
-          onClick={onRemove}
-          className="text-muted-foreground hover:text-destructive flex-shrink-0"
-          data-testid={`button-remove-exercise-${exercise.id}`}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </div>
+      <div className="group flex flex-col gap-3 p-4 rounded-xl bg-muted/30 border border-border/50 hover:border-primary/30 hover:bg-muted/50 transition-all">
+        {/* Top row: name + remove */}
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1 justify-start h-auto py-2 px-3 text-left"
+            onClick={() => setPickerOpen(true)}
+            data-testid={`input-exercise-name-${exercise.id}`}
+          >
+            <Dumbbell className="h-4 w-4 mr-2 text-primary flex-shrink-0" />
+            <span className={cn("truncate text-sm", !exercise.name && "text-muted-foreground")}>
+              {exercise.name || "Tap to choose exercise..."}
+            </span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onRemove}
+            className="text-muted-foreground hover:text-destructive flex-shrink-0"
+            data-testid={`button-remove-exercise-${exercise.id}`}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
 
-      {exercise.videoUrl && (
-        <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-white mt-2 ring-1 ring-border/50 shadow-sm p-4">
-          <img 
-            src={exercise.videoUrl} 
-            alt={exercise.name} 
-            className="w-full h-full object-contain group-hover:scale-105 transition-transform" 
-          />
-          <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded bg-black/60 text-[10px] text-white font-medium backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity">
-            Visual Guide
+        {/* GIF preview if selected */}
+        {exercise.videoUrl && (
+          <div
+            className="relative w-full rounded-lg overflow-hidden bg-white ring-1 ring-border/50 shadow-sm cursor-pointer"
+            onClick={() => setPickerOpen(true)}
+            title="Click to change exercise"
+          >
+            <img
+              src={exercise.videoUrl}
+              alt={exercise.name}
+              className="w-full h-40 object-contain"
+            />
+            <div className="absolute top-2 right-2 bg-black/50 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Search className="h-3 w-3 text-white" />
+            </div>
+          </div>
+        )}
+
+        {/* Sets / Reps / Rest */}
+        <div className="grid grid-cols-3 gap-2">
+          <div>
+            <Label className="text-xs text-muted-foreground">Sets</Label>
+            <Input
+              type="number"
+              min={1} max={10}
+              value={exercise.sets}
+              onChange={(e) => onChange({ ...exercise, sets: parseInt(e.target.value) || 1 })}
+              data-testid={`input-exercise-sets-${exercise.id}`}
+              className="mt-0.5"
+            />
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">Reps</Label>
+            <Input
+              type="number"
+              min={1} max={100}
+              value={exercise.reps}
+              onChange={(e) => onChange({ ...exercise, reps: parseInt(e.target.value) || 1 })}
+              data-testid={`input-exercise-reps-${exercise.id}`}
+              className="mt-0.5"
+            />
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">Rest (s)</Label>
+            <Input
+              type="number"
+              min={0} max={600}
+              value={exercise.restSeconds}
+              onChange={(e) => onChange({ ...exercise, restSeconds: parseInt(e.target.value) || 0 })}
+              data-testid={`input-exercise-rest-${exercise.id}`}
+              className="mt-0.5"
+            />
           </div>
         </div>
-      )}
 
-      <div className="grid grid-cols-3 gap-3">
-        <div>
-          <Label className="text-xs text-muted-foreground">Sets</Label>
-          <Input
-            type="number"
-            min={1}
-            max={10}
-            value={exercise.sets}
-            onChange={(e) => onChange({ ...exercise, sets: parseInt(e.target.value) || 1 })}
-            data-testid={`input-exercise-sets-${exercise.id}`}
-          />
-        </div>
-        <div>
-          <Label className="text-xs text-muted-foreground">Reps</Label>
-          <Input
-            type="number"
-            min={1}
-            max={100}
-            value={exercise.reps}
-            onChange={(e) => onChange({ ...exercise, reps: parseInt(e.target.value) || 1 })}
-            data-testid={`input-exercise-reps-${exercise.id}`}
-          />
-        </div>
-        <div>
-          <Label className="text-xs text-muted-foreground">Rest (sec)</Label>
-          <Input
-            type="number"
-            min={0}
-            max={600}
-            value={exercise.restSeconds}
-            onChange={(e) => onChange({ ...exercise, restSeconds: parseInt(e.target.value) || 0 })}
-            data-testid={`input-exercise-rest-${exercise.id}`}
-          />
-        </div>
+        {/* Notes */}
+        <Input
+          value={exercise.notes || ""}
+          onChange={(e) => onChange({ ...exercise, notes: e.target.value })}
+          placeholder="Notes (optional)"
+          className="text-sm"
+          data-testid={`input-exercise-notes-${exercise.id}`}
+        />
       </div>
-      <Input
-        value={exercise.notes || ""}
-        onChange={(e) => onChange({ ...exercise, notes: e.target.value })}
-        placeholder="Notes (optional)"
-        className="text-sm"
-        data-testid={`input-exercise-notes-${exercise.id}`}
-      />
-    </div>
+    </>
   );
 }
 

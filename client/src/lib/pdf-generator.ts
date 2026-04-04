@@ -20,7 +20,7 @@ const MEAL_LABELS: Record<string, string> = {
   dinner: 'Dinner',
 };
 
-export function generateWorkoutPDF(client: Client, plan: WorkoutPlan): jsPDF {
+export function generateWorkoutPDF(client: Client, plan: WorkoutPlan, library: any[] = []): jsPDF {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   
@@ -89,12 +89,24 @@ export function generateWorkoutPDF(client: Client, plan: WorkoutPlan): jsPDF {
       yPos += 5;
       
       if (!day.isRestDay && day.exercises.length > 0) {
-        const tableData = day.exercises.map(ex => [
-          ex.name,
-          `${ex.sets} x ${ex.reps}`,
-          `${ex.restSeconds}s`,
-          ex.notes || '-'
-        ]);
+        const tableData = day.exercises.map(ex => {
+          const libEx = library.find(l => l.name === ex.name);
+          let extraInfo = '';
+          if (libEx) {
+            extraInfo = `${libEx.category.toUpperCase()}\n${libEx.description || ''}`;
+          }
+          if (ex.videoUrl) {
+            extraInfo += extraInfo ? `\nVideo: ${ex.videoUrl}` : `Video: ${ex.videoUrl}`;
+          }
+          let finalNotes = ex.notes ? `${ex.notes}\n---\n${extraInfo}` : extraInfo;
+
+          return [
+            ex.name,
+            `${ex.sets} x ${ex.reps}`,
+            `${ex.restSeconds}s`,
+            finalNotes || '-'
+          ];
+        });
         
         autoTable(doc, {
           startY: yPos,
@@ -282,7 +294,8 @@ export function generateDietPDF(client: Client, plan: DietPlan): jsPDF {
 export function generateCombinedPDF(
   client: Client, 
   workoutPlan: WorkoutPlan | null, 
-  dietPlan: DietPlan | null
+  dietPlan: DietPlan | null,
+  library: any[] = []
 ): jsPDF {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -317,7 +330,7 @@ export function generateCombinedPDF(
   
   // Add workout plan pages if exists
   if (workoutPlan) {
-    const workoutDoc = generateWorkoutPDF(client, workoutPlan);
+    const workoutDoc = generateWorkoutPDF(client, workoutPlan, library);
     const workoutPages = workoutDoc.getNumberOfPages();
     
     for (let i = 1; i <= workoutPages; i++) {

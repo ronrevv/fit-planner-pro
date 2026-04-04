@@ -52,12 +52,14 @@ function PlanCard({
   plan, 
   type, 
   client,
-  onDelete 
+  onDelete,
+  library
 }: { 
   plan: WorkoutPlan | DietPlan; 
   type: 'workout' | 'diet';
   client: Client;
   onDelete: () => void;
+  library?: any[];
 }) {
   const [isExporting, setIsExporting] = useState(false);
 
@@ -65,7 +67,7 @@ function PlanCard({
     setIsExporting(true);
     try {
       const doc = type === 'workout' 
-        ? generateWorkoutPDF(client, plan as WorkoutPlan)
+        ? generateWorkoutPDF(client, plan as WorkoutPlan, library)
         : generateDietPDF(client, plan as DietPlan);
       downloadPDF(doc, `${client.name.replace(/\s+/g, '_')}_${type}_plan_${MONTH_NAMES[plan.month - 1]}_${plan.year}.pdf`);
     } finally {
@@ -192,6 +194,11 @@ export default function ClientDetail() {
 
   const { data: dietPlans = [] } = useQuery<DietPlan[]>({
     queryKey: ['/api/diet-plans', `?clientId=${params.id}`],
+    enabled: !!params.id,
+  });
+
+  const { data: globalExercises = [] } = useQuery<any[]>({
+    queryKey: ['/api/exercises'],
     enabled: !!params.id,
   });
 
@@ -575,6 +582,7 @@ export default function ClientDetail() {
                   type="workout" 
                   client={client}
                   onDelete={() => handleDeletePlan(plan.id, 'workout')}
+                  library={globalExercises}
                 />
               ))}
             </div>

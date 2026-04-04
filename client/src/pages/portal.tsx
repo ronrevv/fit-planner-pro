@@ -12,7 +12,7 @@ import type { ItemCompletion } from "@shared/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
-import { goalLabels, fitnessLevelLabels, type Client, type WorkoutPlan, type DietPlan, type InjuryLog, type MeasurementLog, type ClientResource, type TrainerProfile } from "@shared/schema";
+import { goalLabels, fitnessLevelLabels, type Client, type WorkoutPlan, type DietPlan, type InjuryLog, type MeasurementLog, type ClientResource, type TrainerProfile, type ExerciseLibraryItem } from "@shared/schema";
 import { MeasurementChart } from "@/components/clients/measurement-chart";
 import { Link as LinkIcon, FileText, Phone, Mail, User as UserIcon } from "lucide-react";
 
@@ -41,6 +41,11 @@ export default function Portal() {
 
   const { data: completions = [] } = useQuery<ItemCompletion[]>({
     queryKey: ['/api/portal', params.token, 'completions', `?date=${displayDate}`],
+    enabled: !!data,
+  });
+
+  const { data: globalExercises = [] } = useQuery<ExerciseLibraryItem[]>({
+    queryKey: ['/api/exercises'],
     enabled: !!data,
   });
 
@@ -257,25 +262,38 @@ export default function Portal() {
                                             }}
                                           />
                                           <div className="flex-1">
-                                            <div className="flex justify-between items-start mb-1">
-                                              <label
-                                                htmlFor={`ex-${ex.id}`}
-                                                className={`font-medium cursor-pointer ${isCompleted('workout', ex.id) ? 'line-through text-muted-foreground' : ''}`}
-                                              >
-                                                {ex.name}
-                                              </label>
-                                              <span className="text-muted-foreground text-xs">{ex.sets} x {ex.reps}</span>
-                                            </div>
-                                            {ex.videoUrl && (
-                                              <div className="my-3 rounded-lg overflow-hidden bg-black/5 border border-border/50 shadow-sm transition-all hover:shadow-md">
-                                                <img 
-                                                  src={ex.videoUrl} 
-                                                  alt={ex.name} 
-                                                  className="w-full h-48 object-contain mix-blend-multiply transition-transform hover:scale-[1.02]" 
-                                                />
-                                              </div>
-                                            )}
-                                            {ex.notes && <p className="text-xs text-muted-foreground">{ex.notes}</p>}
+                                            {(() => {
+                                              const libEx = globalExercises.find(e => e.name === ex.name);
+                                              return (
+                                                <>
+                                                  <div className="flex justify-between items-start mb-1">
+                                                    <label
+                                                      htmlFor={`ex-${ex.id}`}
+                                                      className={`font-medium cursor-pointer ${isCompleted('workout', ex.id) ? 'line-through text-muted-foreground' : ''}`}
+                                                    >
+                                                      {ex.name}
+                                                    </label>
+                                                    <span className="text-muted-foreground text-xs">{ex.sets} x {ex.reps}</span>
+                                                  </div>
+                                                  {libEx && (
+                                                    <div className="flex flex-col gap-1 mb-2">
+                                                      <Badge variant="outline" className="text-[10px] uppercase w-fit">{libEx.category}</Badge>
+                                                      <span className="text-xs text-muted-foreground italic leading-relaxed">{libEx.description}</span>
+                                                    </div>
+                                                  )}
+                                                  {ex.videoUrl && (
+                                                    <div className="my-3 rounded-lg overflow-hidden bg-white border border-border/50 shadow-sm p-4 transition-all hover:shadow-md">
+                                                      <img 
+                                                        src={ex.videoUrl} 
+                                                        alt={ex.name} 
+                                                        className="w-full h-48 object-contain transition-transform hover:scale-[1.02]" 
+                                                      />
+                                                    </div>
+                                                  )}
+                                                  {ex.notes && <p className="text-xs text-muted-foreground mt-2 border-l-2 pl-2 border-primary/50 text-primary/80">{ex.notes}</p>}
+                                                </>
+                                              );
+                                            })()}
                                           </div>
                                         </div>
                                       </div>
