@@ -1,8 +1,37 @@
 import { z } from "zod";
 
+// Gym Schema
+export const gymSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, "Gym name is required"),
+  address: z.string().optional(),
+  contactEmail: z.string().email(),
+  createdAt: z.string(),
+});
+
+export const insertGymSchema = gymSchema.omit({ id: true, createdAt: true });
+export type Gym = z.infer<typeof gymSchema>;
+export type InsertGym = z.infer<typeof insertGymSchema>;
+
+// Trainer Schema
+export const trainerSchema = z.object({
+  id: z.string(),
+  gymId: z.string(),
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email(),
+  phone: z.string().optional(),
+  specialization: z.string().optional(),
+  bio: z.string().optional(),
+});
+
+export const insertTrainerSchema = trainerSchema.omit({ id: true });
+export type Trainer = z.infer<typeof trainerSchema>;
+export type InsertTrainer = z.infer<typeof insertTrainerSchema>;
+
 // Client Schema
 export const clientSchema = z.object({
   id: z.string(),
+  trainerId: z.string().optional(), // Link to trainer
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Valid email required"),
   phone: z.string().min(10, "Phone number required"),
@@ -128,24 +157,70 @@ export const insertMeasurementLogSchema = measurementLogSchema.omit({ id: true }
 export type MeasurementLog = z.infer<typeof measurementLogSchema>;
 export type InsertMeasurementLog = z.infer<typeof insertMeasurementLogSchema>;
 
-// User Schema (for trainers)
+// Session Schema (Scheduling)
+export const sessionSchema = z.object({
+  id: z.string(),
+  trainerId: z.string(),
+  clientId: z.string(),
+  dateTime: z.string(), // ISO string
+  durationMinutes: z.number().default(60),
+  status: z.enum(["scheduled", "completed", "cancelled"]),
+  notes: z.string().optional(),
+});
+
+export const insertSessionSchema = sessionSchema.omit({ id: true });
+export type Session = z.infer<typeof sessionSchema>;
+export type InsertSession = z.infer<typeof insertSessionSchema>;
+
+// Payment Schema (Tracking)
+export const paymentSchema = z.object({
+  id: z.string(),
+  trainerId: z.string(),
+  clientId: z.string(),
+  amount: z.number().min(0),
+  date: z.string(),
+  status: z.enum(["pending", "paid", "overdue"]),
+  description: z.string().optional(),
+});
+
+export const insertPaymentSchema = paymentSchema.omit({ id: true });
+export type Payment = z.infer<typeof paymentSchema>;
+export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+
+// Library Item Schema (Shared Exercises/Meals)
+export const libraryItemSchema = z.object({
+  id: z.string(),
+  gymId: z.string(),
+  type: z.enum(["exercise", "meal"]),
+  name: z.string().min(1),
+  data: z.any(), // Flexible for exercise details or meal details
+  createdAt: z.string(),
+});
+
+export const insertLibraryItemSchema = libraryItemSchema.omit({ id: true, createdAt: true });
+export type LibraryItem = z.infer<typeof libraryItemSchema>;
+export type InsertLibraryItem = z.infer<typeof insertLibraryItemSchema>;
+
+// User Schema
 export const users = {
   id: "",
   username: "",
   password: "",
+  role: "trainer", // "admin", "trainer", "gym_admin"
+  gymId: "",
+  trainerId: "",
 };
 
 export const insertUserSchema = z.object({
   username: z.string().min(1),
   password: z.string().min(1),
+  role: z.enum(["admin", "trainer", "gym_admin"]).default("trainer"),
+  gymId: z.string().optional(),
+  trainerId: z.string().optional(),
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = {
-  id: string;
-  username: string;
-  password: string;
-};
+export type User = z.infer<typeof insertUserSchema> & { id: string };
 
 // Goal display names
 export const goalLabels: Record<Client["goal"], string> = {
@@ -202,19 +277,10 @@ export const insertClientResourceSchema = clientResourceSchema.omit({ id: true, 
 export type ClientResource = z.infer<typeof clientResourceSchema>;
 export type InsertClientResource = z.infer<typeof insertClientResourceSchema>;
 
-// Trainer Info Schema (Singleton per client usually, or global)
-// For now, let's keep it simple: Trainer Info can be part of Client settings or a separate object associated with a client if we want specific info per client.
-// However, a global "Trainer Profile" might be better.
-// Given the current architecture, let's add a `trainerInfo` field to the Client object
-// OR create a separate simple store for trainer details that can be updated.
-// Let's create a dedicated schema for Trainer Public Profile that can be linked to clients.
-// For simplicity and since we have single trainer (implied by auth), let's store it as a key-value or single record.
-// BUT, the request implies "Something client can see".
-// Let's add a "trainerProfile" to the response of the portal, which comes from a new store or the user object.
-// Since User schema is minimal, let's add a specific 'TrainerProfile' schema.
-
+// Trainer Info Schema (Legacy/Public Profile)
 export const trainerProfileSchema = z.object({
   id: z.string(),
+  trainerId: z.string().optional(),
   name: z.string().min(1, "Name is required"),
   email: z.string().email(),
   phone: z.string().optional(),

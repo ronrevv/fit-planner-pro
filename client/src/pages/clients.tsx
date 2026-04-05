@@ -25,6 +25,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useAppContext } from "@/hooks/use-app-context";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Client } from "@shared/schema";
 import { goalLabels, fitnessLevelLabels } from "@shared/schema";
@@ -51,13 +52,15 @@ function ClientCardSkeleton() {
 }
 
 export default function Clients() {
+  const { activeTrainer } = useAppContext();
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const { toast } = useToast();
 
   const { data: clients = [], isLoading } = useQuery<Client[]>({
-    queryKey: ['/api/clients'],
+    queryKey: [`/api/clients?trainerId=${activeTrainer?.id}`],
+    enabled: !!activeTrainer
   });
 
   const deleteMutation = useMutation({
@@ -65,7 +68,7 @@ export default function Clients() {
       await apiRequest('DELETE', `/api/clients/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/clients?trainerId=${activeTrainer?.id}`] });
       toast({
         title: "Client deleted",
         description: "The client has been removed successfully.",
@@ -98,8 +101,23 @@ export default function Clients() {
     }
   };
 
+  if (!activeTrainer) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[80vh] space-y-4 animate-in fade-in duration-500">
+        <div className="p-4 rounded-full bg-blue-100">
+          <Users className="h-10 w-10 text-blue-600" />
+        </div>
+        <h2 className="text-2xl font-bold">No Trainer Selected</h2>
+        <p className="text-muted-foreground">Please select a trainer in the dashboard to manage clients.</p>
+        <Button asChild className="font-bold">
+          <Link href="/">Go to Dashboard</Link>
+        </Button>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-6 max-w-7xl mx-auto space-y-6 animate-in fade-in duration-700">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

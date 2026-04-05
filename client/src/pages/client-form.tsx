@@ -25,10 +25,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useAppContext } from "@/hooks/use-app-context";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { insertClientSchema, type Client, type InsertClient, goalLabels, fitnessLevelLabels } from "@shared/schema";
 
 export default function ClientForm() {
+  const { activeTrainer } = useAppContext();
   const params = useParams<{ id?: string }>();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -116,10 +118,15 @@ export default function ClientForm() {
   });
 
   const onSubmit = (data: InsertClient) => {
+    const payload = {
+      ...data,
+      trainerId: activeTrainer?.id || undefined
+    };
+
     if (isEditing) {
-      updateMutation.mutate(data);
+      updateMutation.mutate(payload);
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(payload);
     }
   };
 

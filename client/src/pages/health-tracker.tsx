@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 import {
   Users, Activity, HeartPulse, Scale, Check
 } from "lucide-react";
@@ -9,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { useAppContext } from "@/hooks/use-app-context";
 import type { Client } from "@shared/schema";
 import { InjuryLogList } from "@/components/clients/injury-log";
 import { MeasurementLogList } from "@/components/clients/measurement-log";
@@ -16,11 +18,13 @@ import { MeasurementChart } from "@/components/clients/measurement-chart";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function HealthTracker() {
+  const { activeTrainer } = useAppContext();
   const [open, setOpen] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
 
   const { data: clients = [], isLoading: clientsLoading } = useQuery<Client[]>({
-    queryKey: ['/api/clients'],
+    queryKey: [`/api/clients?trainerId=${activeTrainer?.id}`],
+    enabled: !!activeTrainer
   });
 
   const { data: measurementLogs = [] } = useQuery<any[]>({
@@ -30,8 +34,23 @@ export default function HealthTracker() {
 
   const selectedClient = clients.find(c => c.id === selectedClientId);
 
+  if (!activeTrainer) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[80vh] space-y-4 animate-in fade-in duration-500">
+        <div className="p-4 rounded-full bg-blue-100">
+          <Activity className="h-10 w-10 text-blue-600" />
+        </div>
+        <h2 className="text-2xl font-bold">No Trainer Selected</h2>
+        <p className="text-muted-foreground">Please select a trainer in the dashboard to track health data.</p>
+        <Button asChild className="font-bold">
+          <Link href="/">Go to Dashboard</Link>
+        </Button>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-6 max-w-7xl mx-auto space-y-6 animate-in fade-in duration-700">
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
           <Activity className="h-8 w-8 text-primary" />

@@ -1,0 +1,36 @@
+
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+9:41:05 PM [express] serving at http://127.0.0.1:5173/
+Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.
+9:43:42 PM [express] POST /api/gyms 201 in 4ms :: {"name":"Gold's Gym","address":"123 Muscle St","contactEmail":"contact@goldsgym.com","id":"6021a512-cc13-455c-b36b-9c15d27de168","createdAt":"2026-04-05T21:43:42.881Z"}
+9:43:42 PM [express] GET /api/gyms 200 in 1ms :: [{"name":"Gold's Gym","address":"123 Muscle St","contactEmail":"contact@goldsgym.com","id":"6021a512-cc13-455c-b36b-9c15d27de168","createdAt":"2026-04-05T21:43:42.881Z"}]
+9:44:54 PM [express] POST /api/gyms 201 in 2ms :: {"name":"Gold's Gym","address":"123 Muscle St","contactEmail":"contact@goldsgym.com","id":"6b5198de-9582-479d-b25c-eb4af015f0cc","createdAt":"2026-04-05T21:44:54.993Z"}
+9:44:55 PM [express] GET /api/gyms 200 in 1ms :: [{"name":"Gold's Gym","address":"123 Muscle St","contactEmail":"contact@goldsgym.com","id":"6021a512-cc13-455c-b36b-9c15d27de168","createdAt":"2026-04-05T21:43:42.881Z"},{"name":"Gold's Gym","address":"123 Muscle St","contactEmail":"contact@goldsgym.com","id":"6b5198de-9582-479d-b25c-eb4af015f0cc","createdAt":"2026-04-05T21:44:54.993Z"}]
+9:45:00 PM [express] GET /api/trainers 200 in 3ms :: []
+9:45:01 PM [express] POST /api/trainers 201 in 2ms :: {"gymId":"6021a512-cc13-455c-b36b-9c15d27de168","name":"Sarah O'Connor","email":"sarah.o.connor@goldsgym.com","id":"e6757fca-198b-4f42-88aa-d8a9b903a63b"}
+9:45:01 PM [express] GET /api/trainers 200 in 1ms :: [{"gymId":"6021a512-cc13-455c-b36b-9c15d27de168","name":"Sarah O'Connor","email":"sarah.o.connor@goldsgym.com","id":"e6757fca-198b-4f42-88aa-d8a9b903a63b"}]
+9:45:01 PM [express] GET /api/clients 200 in 1ms :: []
+9:45:01 PM [express] GET /api/workout-plans 200 in 1ms :: []
+9:45:01 PM [express] GET /api/diet-plans 200 in 1ms :: []
+9:46:09 PM [express] POST /api/gyms 201 in 1ms :: {"name":"Gold's Gym","address":"123 Muscle St","contactEmail":"contact@goldsgym.com","id":"4862f45b-1958-4ae8-a69a-f895139be542","createdAt":"2026-04-05T21:46:09.431Z"}
+9:46:09 PM [express] GET /api/gyms 200 in 1ms :: [{"name":"Gold's Gym","address":"123 Muscle St","contactEmail":"contact@goldsgym.com","id":"6021a512-cc13-455c-b36b-9c15d27de168","createdAt":"2026-04-05T21:43:42.881Z"},{"name":"Gold's Gym","address":"123 Muscle St","contactEmail":"contact@goldsgym.com","id":"6b5198de-9582-479d-b25c-eb4af015f0cc","createdAt":"2026-04-05T21:44:54.993Z"},{"name":"Gold's Gym","address":"123 Muscle St","contactEmail":"contact@goldsgym.com","id":"4862f45b-1958-4ae8-a69a-f895139be542","createdAt":"2026-04-05T21:46:09.431Z"}]
+9:46:12 PM [express] GET /api/trainers 200 in 0ms :: [{"gymId":"6021a512-cc13-455c-b36b-9c15d27de168","name":"Sarah O'Connor","email":"sarah.o.connor@goldsgym.com","id":"e6757fca-198b-4f42-88aa-d8a9b903a63b"}]
+9:46:13 PM [express] POST /api/trainers 201 in 0ms :: {"gymId":"6021a512-cc13-455c-b36b-9c15d27de168","name":"Sarah O'Connor","email":"sarah.o.connor@goldsgym.com","id":"96be5f38-0bf7-4b12-8a53-979cb2625010"}
+9:46:13 PM [express] GET /api/trainers 200 in 0ms :: [{"gymId":"6021a512-cc13-455c-b36b-9c15d27de168","name":"Sarah O'Connor","email":"sarah.o.connor@goldsgym.com","id":"e6757fca-198b-4f42-88aa-d8a9b903a63b"},{"gymId":"6021a512-cc13-455c-b36b-9c15d27de168","name":"Sarah O'Connor","email":"sarah.o.connor@goldsgym.com","id":"96be5f38-0bf7-4b12-8a53-979cb2625010"}]
+9:46:13 PM [express] GET /api/clients 200 in 1ms :: []
+9:46:13 PM [express] GET /api/workout-plans 200 in 0ms :: []
+9:46:13 PM [express] GET /api/diet-plans 200 in 1ms :: []
+9:46:20 PM [express] POST /api/clients 201 in 3ms :: {"trainerId":"96be5f38-0bf7-4b12-8a53-979cb2625010","name":"John Doe","email":"john@doe.com","phone":"1234567890","age":25,"weight":70,"height":170,"goal":"muscle_gain","fitnessLevel":"intermediate","notes":"","id":"c9fa4c41-5dd4-4515-be30-dd72010772bb","token":"ad7c2d6a-e931-48c4-97d7-2951807a95c4"}
+9:46:20 PM [express] GET /api/clients/c9fa4c41-5dd4-4515-be30-dd72010772bb 200 in 3ms :: {"trainerId":"96be5f38-0bf7-4b12-8a53-979cb2625010","name":"John Doe","email":"john@doe.com","phone":"1234567890","age":25,"weight":70,"height":170,"goal":"muscle_gain","fitnessLevel":"intermediate","notes":"","id":"c9fa4c41-5dd4-4515-be30-dd72010772bb","token":"ad7c2d6a-e931-48c4-97d7-2951807a95c4"}
+9:46:20 PM [express] GET /api/workout-plans/ 200 in 2ms :: []
+9:46:20 PM [express] GET /api/diet-plans/ 200 in 0ms :: []
+9:46:20 PM [express] GET /api/clients/c9fa4c41-5dd4-4515-be30-dd72010772bb/measurements 200 in 1ms :: []
+9:46:22 PM [express] GET /api/sessions 200 in 1ms :: []
+9:46:22 PM [express] GET /api/payments 200 in 4ms :: []
+9:46:22 PM [express] GET /api/clients 200 in 1ms :: [{"trainerId":"96be5f38-0bf7-4b12-8a53-979cb2625010","name":"John Doe","email":"john@doe.com","phone":"1234567890","age":25,"weight":70,"height":170,"goal":"muscle_gain","fitnessLevel":"intermediate","notes":"","id":"c9fa4c41-5dd4-4515-be30-dd72010772bb","token":"ad7c2d6a-e931-48c4-97d7-2951807a95c4"}]
