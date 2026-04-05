@@ -1,4 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   Card,
@@ -83,7 +84,7 @@ export default function SharedLibrary() {
         <h2 className="text-2xl font-bold">No Gym Selected</h2>
         <p className="text-muted-foreground">Please select a gym in the dashboard to view its library.</p>
         <Button asChild className="font-bold">
-          <a href="/">Go to Dashboard</a>
+          <Link href="/">Go to Dashboard</Link>
         </Button>
       </div>
     );

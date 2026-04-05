@@ -1,4 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   Card,
@@ -68,7 +69,8 @@ export default function Operations() {
   });
 
   const { data: clients } = useQuery<Client[]>({
-    queryKey: ["/api/clients"],
+    queryKey: [`/api/clients?trainerId=${activeTrainer?.id}`],
+    enabled: !!activeTrainer
   });
 
   const addActionMutation = useMutation({
@@ -113,7 +115,7 @@ export default function Operations() {
         <h2 className="text-2xl font-bold">No Trainer Selected</h2>
         <p className="text-muted-foreground">Please select a trainer in the dashboard to manage operations.</p>
         <Button asChild className="font-bold">
-          <a href="/">Go to Dashboard</a>
+          <Link href="/">Go to Dashboard</Link>
         </Button>
       </div>
     );
