@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { AppContextProvider } from "@/hooks/use-app-context";
 import { 
   SidebarProvider, 
   Sidebar, 
@@ -21,7 +22,7 @@ import {
   SidebarInset,
 } from "@/components/ui/sidebar";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Users, Dumbbell, Utensils, ChevronRight } from "lucide-react";
+import { LayoutDashboard, Users, Dumbbell, Utensils, ChevronRight, Building2, ShieldCheck, BookOpen, Clock } from "lucide-react";
 
 import Dashboard from "@/pages/dashboard";
 import Clients from "@/pages/clients";
@@ -32,14 +33,25 @@ import DietPlanBuilder from "@/pages/diet-plan-builder";
 import HealthTracker from "@/pages/health-tracker";
 import Portal from "@/pages/portal";
 import NotFound from "@/pages/not-found";
+import AdminDashboard from "@/pages/admin-dashboard";
+import GymOnboarding from "@/pages/gym-onboarding";
+import SharedLibrary from "@/pages/shared-library";
+import Operations from "@/pages/operations";
 import { Activity } from "lucide-react";
 
 const navigation = [
   { title: "Dashboard", href: "/", icon: LayoutDashboard },
   { title: "Clients", href: "/clients", icon: Users },
+  { title: "Operations", href: "/operations", icon: Clock },
+  { title: "Library", href: "/library", icon: BookOpen },
   { title: "Health", href: "/health", icon: Activity },
   { title: "Workout Plans", href: "/workout-plans/new", icon: Dumbbell },
   { title: "Diet Plans", href: "/diet-plans/new", icon: Utensils },
+];
+
+const adminNavigation = [
+  { title: "Admin Stats", href: "/admin", icon: ShieldCheck },
+  { title: "Onboard Gym", href: "/gym/new", icon: Building2 },
 ];
 
 function AppSidebar() {
@@ -83,6 +95,27 @@ function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Admin Panel</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {adminNavigation.map((item) => {
+                const isActive = location === item.href;
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive}>
+                      <Link href={item.href}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border p-4">
         <div className="flex items-center justify-between">
@@ -106,6 +139,10 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
+      <Route path="/admin" component={AdminDashboard} />
+      <Route path="/gym/new" component={GymOnboarding} />
+      <Route path="/library" component={SharedLibrary} />
+      <Route path="/operations" component={Operations} />
       <Route path="/clients" component={Clients} />
       <Route path="/clients/new" component={ClientForm} />
       <Route path="/clients/:id/edit" component={ClientForm} />
@@ -124,18 +161,21 @@ function Router() {
 function App() {
   const [location] = useLocation();
   const isPortal = location.startsWith("/portal/");
+  const isGymOnboarding = location === "/gym/new";
 
   const style = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3rem",
   };
 
-  if (isPortal) {
+  if (isPortal || isGymOnboarding) {
     return (
       <ThemeProvider defaultTheme="dark" storageKey="fitpro-portal-theme">
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>
-            <Router />
+            <AppContextProvider>
+              <Router />
+            </AppContextProvider>
             <Toaster />
           </TooltipProvider>
         </QueryClientProvider>
@@ -147,20 +187,22 @@ function App() {
     <ThemeProvider defaultTheme="light" storageKey="fitpro-theme">
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
-          <SidebarProvider style={style as React.CSSProperties}>
-            <div className="flex min-h-screen w-full">
-              <AppSidebar />
-              <SidebarInset className="flex flex-col flex-1">
-                <header className="sticky top-0 z-50 flex h-14 items-center justify-between gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4">
-                  <SidebarTrigger data-testid="button-sidebar-toggle" />
-                  <ThemeToggle />
-                </header>
-                <main className="flex-1 overflow-auto">
-                  <Router />
-                </main>
-              </SidebarInset>
-            </div>
-          </SidebarProvider>
+          <AppContextProvider>
+            <SidebarProvider style={style as React.CSSProperties}>
+              <div className="flex min-h-screen w-full">
+                <AppSidebar />
+                <SidebarInset className="flex flex-col flex-1">
+                  <header className="sticky top-0 z-50 flex h-14 items-center justify-between gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4">
+                    <SidebarTrigger data-testid="button-sidebar-toggle" />
+                    <ThemeToggle />
+                  </header>
+                  <main className="flex-1 overflow-auto">
+                    <Router />
+                  </main>
+                </SidebarInset>
+              </div>
+            </SidebarProvider>
+          </AppContextProvider>
           <Toaster />
         </TooltipProvider>
       </QueryClientProvider>

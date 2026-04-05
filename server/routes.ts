@@ -9,7 +9,12 @@ import {
   insertMeasurementLogSchema,
   insertItemCompletionSchema,
   insertClientResourceSchema,
-  insertTrainerProfileSchema
+  insertTrainerProfileSchema,
+  insertGymSchema,
+  insertTrainerSchema,
+  insertSessionSchema,
+  insertPaymentSchema,
+  insertLibraryItemSchema
 } from "@shared/schema";
 
 export async function registerRoutes(
@@ -17,12 +22,165 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   
+  // ==================== GYMS ====================
+  app.post("/api/gyms", async (req, res) => {
+    try {
+      const parseResult = insertGymSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ message: "Invalid gym data", errors: parseResult.error.errors });
+      }
+      const gym = await storage.createGym(parseResult.data);
+      res.status(201).json(gym);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create gym" });
+    }
+  });
+
+  app.get("/api/gyms", async (req, res) => {
+    try {
+      const gyms = await storage.getAllGyms();
+      res.json(gyms);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch gyms" });
+    }
+  });
+
+  // ==================== TRAINERS ====================
+  app.post("/api/trainers", async (req, res) => {
+    try {
+      const parseResult = insertTrainerSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ message: "Invalid trainer data", errors: parseResult.error.errors });
+      }
+      const trainer = await storage.createTrainer(parseResult.data);
+      res.status(201).json(trainer);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create trainer" });
+    }
+  });
+
+  app.get("/api/trainers", async (req, res) => {
+    try {
+      const gymId = req.query.gymId as string;
+      const trainers = gymId ? await storage.getTrainersByGym(gymId) : await storage.getAllTrainers();
+      res.json(trainers);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch trainers" });
+    }
+  });
+
+  // ==================== ADMIN DASHBOARD ====================
+  app.get("/api/admin/stats", async (req, res) => {
+    try {
+      const gyms = await storage.getAllGyms();
+      const trainers = await storage.getAllTrainers();
+      const clients = await storage.getAllClients();
+      res.json({
+        gymCount: gyms.length,
+        trainerCount: trainers.length,
+        clientCount: clients.length
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch admin stats" });
+    }
+  });
+
+  // ==================== SESSIONS ====================
+  app.post("/api/sessions", async (req, res) => {
+    try {
+      const parseResult = insertSessionSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ message: "Invalid session data", errors: parseResult.error.errors });
+      }
+      const session = await storage.createSession(parseResult.data);
+      res.status(201).json(session);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create session" });
+    }
+  });
+
+  app.get("/api/sessions", async (req, res) => {
+    try {
+      const trainerId = req.query.trainerId as string;
+      const clientId = req.query.clientId as string;
+      if (trainerId) {
+        const sessions = await storage.getSessionsByTrainer(trainerId);
+        return res.json(sessions);
+      }
+      if (clientId) {
+        const sessions = await storage.getSessionsByClient(clientId);
+        return res.json(sessions);
+      }
+      res.status(400).json({ message: "trainerId or clientId required" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch sessions" });
+    }
+  });
+
+  // ==================== PAYMENTS ====================
+  app.post("/api/payments", async (req, res) => {
+    try {
+      const parseResult = insertPaymentSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ message: "Invalid payment data", errors: parseResult.error.errors });
+      }
+      const payment = await storage.createPayment(parseResult.data);
+      res.status(201).json(payment);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create payment" });
+    }
+  });
+
+  app.get("/api/payments", async (req, res) => {
+    try {
+      const trainerId = req.query.trainerId as string;
+      const clientId = req.query.clientId as string;
+      if (trainerId) {
+        const payments = await storage.getPaymentsByTrainer(trainerId);
+        return res.json(payments);
+      }
+      if (clientId) {
+        const payments = await storage.getPaymentsByClient(clientId);
+        return res.json(payments);
+      }
+      res.status(400).json({ message: "trainerId or clientId required" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch payments" });
+    }
+  });
+
+  // ==================== LIBRARY ====================
+  app.post("/api/library", async (req, res) => {
+    try {
+      const parseResult = insertLibraryItemSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ message: "Invalid library item data", errors: parseResult.error.errors });
+      }
+      const item = await storage.createLibraryItem(parseResult.data);
+      res.status(201).json(item);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create library item" });
+    }
+  });
+
+  app.get("/api/library", async (req, res) => {
+    try {
+      const gymId = req.query.gymId as string;
+      if (!gymId) return res.status(400).json({ message: "gymId required" });
+      const items = await storage.getLibraryItemsByGym(gymId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch library items" });
+    }
+  });
+
   // ==================== CLIENTS ====================
   
-  // Get all clients
+  // Get all clients (optionally filtered by trainer)
   app.get("/api/clients", async (req, res) => {
     try {
-      const clients = await storage.getAllClients();
+      const trainerId = req.query.trainerId as string;
+      const clients = trainerId ? await storage.getClientsByTrainer(trainerId) : await storage.getAllClients();
       res.json(clients);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch clients" });
@@ -402,8 +560,6 @@ export async function registerRoutes(
       resources.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
       // Get latest active plans
-      // For simplicity, we'll take the most recently created ones
-      // In a real app, we might check month/year or an "active" flag
       const currentWorkoutPlan = workoutPlans[workoutPlans.length - 1] || null;
       const currentDietPlan = dietPlans[dietPlans.length - 1] || null;
 

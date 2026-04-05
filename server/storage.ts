@@ -5,7 +5,12 @@ import {
   type User, type InsertUser,
   type InjuryLog, type InsertInjuryLog,
   type MeasurementLog, type InsertMeasurementLog,
-  type ItemCompletion, type InsertItemCompletion
+  type ItemCompletion, type InsertItemCompletion,
+  type Gym, type InsertGym,
+  type Trainer, type InsertTrainer,
+  type Session, type InsertSession,
+  type Payment, type InsertPayment,
+  type LibraryItem, type InsertLibraryItem
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -15,8 +20,20 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
 
+  // Gyms
+  createGym(gym: InsertGym): Promise<Gym>;
+  getGym(id: string): Promise<Gym | undefined>;
+  getAllGyms(): Promise<Gym[]>;
+
+  // Trainers
+  createTrainer(trainer: InsertTrainer): Promise<Trainer>;
+  getTrainer(id: string): Promise<Trainer | undefined>;
+  getTrainersByGym(gymId: string): Promise<Trainer[]>;
+  getAllTrainers(): Promise<Trainer[]>;
+
   // Clients
   getAllClients(): Promise<Client[]>;
+  getClientsByTrainer(trainerId: string): Promise<Client[]>;
   getClient(id: string): Promise<Client | undefined>;
   getClientByToken(token: string): Promise<Client | undefined>;
   createClient(client: InsertClient): Promise<Client>;
@@ -61,6 +78,20 @@ export interface IStorage {
   // Trainer Profile
   getTrainerProfile(): Promise<import("@shared/schema").TrainerProfile | undefined>;
   updateTrainerProfile(profile: import("@shared/schema").InsertTrainerProfile): Promise<import("@shared/schema").TrainerProfile>;
+
+  // Sessions
+  createSession(session: InsertSession): Promise<Session>;
+  getSessionsByTrainer(trainerId: string): Promise<Session[]>;
+  getSessionsByClient(clientId: string): Promise<Session[]>;
+
+  // Payments
+  createPayment(payment: InsertPayment): Promise<Payment>;
+  getPaymentsByTrainer(trainerId: string): Promise<Payment[]>;
+  getPaymentsByClient(clientId: string): Promise<Payment[]>;
+
+  // Library
+  createLibraryItem(item: InsertLibraryItem): Promise<LibraryItem>;
+  getLibraryItemsByGym(gymId: string): Promise<LibraryItem[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -74,6 +105,12 @@ export class MemStorage implements IStorage {
   private clientResources: Map<string, import("@shared/schema").ClientResource>;
   private trainerProfile: import("@shared/schema").TrainerProfile | undefined;
 
+  private gyms: Map<string, Gym>;
+  private trainers: Map<string, Trainer>;
+  private sessions: Map<string, Session>;
+  private payments: Map<string, Payment>;
+  private libraryItems: Map<string, LibraryItem>;
+
   constructor() {
     this.users = new Map();
     this.clients = new Map();
@@ -83,6 +120,12 @@ export class MemStorage implements IStorage {
     this.measurementLogs = new Map();
     this.itemCompletions = new Map();
     this.clientResources = new Map();
+
+    this.gyms = new Map();
+    this.trainers = new Map();
+    this.sessions = new Map();
+    this.payments = new Map();
+    this.libraryItems = new Map();
   }
 
   // Users
@@ -103,21 +146,53 @@ export class MemStorage implements IStorage {
     return user;
   }
 
+  // Gyms
+  async createGym(insertGym: InsertGym): Promise<Gym> {
+    const id = randomUUID();
+    const gym: Gym = { ...insertGym, id, createdAt: new Date().toISOString() };
+    this.gyms.set(id, gym);
+    return gym;
+  }
+
+  async getGym(id: string): Promise<Gym | undefined> {
+    return this.gyms.get(id);
+  }
+
+  async getAllGyms(): Promise<Gym[]> {
+    return Array.from(this.gyms.values());
+  }
+
+  // Trainers
+  async createTrainer(insertTrainer: InsertTrainer): Promise<Trainer> {
+    const id = randomUUID();
+    const trainer: Trainer = { ...insertTrainer, id };
+    this.trainers.set(id, trainer);
+    return trainer;
+  }
+
+  async getTrainer(id: string): Promise<Trainer | undefined> {
+    return this.trainers.get(id);
+  }
+
+  async getTrainersByGym(gymId: string): Promise<Trainer[]> {
+    return Array.from(this.trainers.values()).filter(t => t.gymId === gymId);
+  }
+
+  async getAllTrainers(): Promise<Trainer[]> {
+    return Array.from(this.trainers.values());
+  }
+
   // Clients
   async getAllClients(): Promise<Client[]> {
-    // Ensure all clients have tokens (migration for existing data)
-    for (const client of this.clients.values()) {
-      if (!client.token) {
-        client.token = randomUUID();
-        this.clients.set(client.id, client);
-      }
-    }
     return Array.from(this.clients.values());
+  }
+
+  async getClientsByTrainer(trainerId: string): Promise<Client[]> {
+    return Array.from(this.clients.values()).filter(c => c.trainerId === trainerId);
   }
 
   async getClient(id: string): Promise<Client | undefined> {
     const client = this.clients.get(id);
-    // Backward compatibility for existing clients without token
     if (client && !client.token) {
       client.token = randomUUID();
       this.clients.set(id, client);
@@ -149,28 +224,22 @@ export class MemStorage implements IStorage {
   async deleteClient(id: string): Promise<boolean> {
     const existed = this.clients.has(id);
     this.clients.delete(id);
-    
-    // Also delete associated plans
+
+    // CLEANUP logic restored
     for (const [planId, plan] of this.workoutPlans) {
-      if (plan.clientId === id) {
-        this.workoutPlans.delete(planId);
-      }
+      if (plan.clientId === id) this.workoutPlans.delete(planId);
     }
     for (const [planId, plan] of this.dietPlans) {
-      if (plan.clientId === id) {
-        this.dietPlans.delete(planId);
-      }
+      if (plan.clientId === id) this.dietPlans.delete(planId);
     }
-    // Delete associated logs
     for (const [logId, log] of this.injuryLogs) {
-      if (log.clientId === id) {
-        this.injuryLogs.delete(logId);
-      }
+      if (log.clientId === id) this.injuryLogs.delete(logId);
     }
     for (const [logId, log] of this.measurementLogs) {
-      if (log.clientId === id) {
-        this.measurementLogs.delete(logId);
-      }
+      if (log.clientId === id) this.measurementLogs.delete(logId);
+    }
+    for (const [resourceId, resource] of this.clientResources) {
+      if (resource.clientId === id) this.clientResources.delete(resourceId);
     }
     
     return existed;
@@ -351,6 +420,50 @@ export class MemStorage implements IStorage {
     const updatedProfile = { ...profile, id };
     this.trainerProfile = updatedProfile;
     return updatedProfile;
+  }
+
+  // Sessions
+  async createSession(insertSession: InsertSession): Promise<Session> {
+    const id = randomUUID();
+    const session: Session = { ...insertSession, id };
+    this.sessions.set(id, session);
+    return session;
+  }
+
+  async getSessionsByTrainer(trainerId: string): Promise<Session[]> {
+    return Array.from(this.sessions.values()).filter(s => s.trainerId === trainerId);
+  }
+
+  async getSessionsByClient(clientId: string): Promise<Session[]> {
+    return Array.from(this.sessions.values()).filter(s => s.clientId === clientId);
+  }
+
+  // Payments
+  async createPayment(insertPayment: InsertPayment): Promise<Payment> {
+    const id = randomUUID();
+    const payment: Payment = { ...insertPayment, id };
+    this.payments.set(id, payment);
+    return payment;
+  }
+
+  async getPaymentsByTrainer(trainerId: string): Promise<Payment[]> {
+    return Array.from(this.payments.values()).filter(p => p.trainerId === trainerId);
+  }
+
+  async getPaymentsByClient(clientId: string): Promise<Payment[]> {
+    return Array.from(this.payments.values()).filter(p => p.clientId === clientId);
+  }
+
+  // Library
+  async createLibraryItem(insertItem: InsertLibraryItem): Promise<LibraryItem> {
+    const id = randomUUID();
+    const item: LibraryItem = { ...insertItem, id, createdAt: new Date().toISOString() };
+    this.libraryItems.set(id, item);
+    return item;
+  }
+
+  async getLibraryItemsByGym(gymId: string): Promise<LibraryItem[]> {
+    return Array.from(this.libraryItems.values()).filter(i => i.gymId === gymId);
   }
 }
 
