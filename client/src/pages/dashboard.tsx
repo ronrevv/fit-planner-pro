@@ -129,13 +129,13 @@ export default function Dashboard() {
   const recentClients = clients.slice(0, 6);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-8">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6 sm:space-y-8">
       {/* Welcome Header */}
       <div className="space-y-2">
-        <h1 className="text-4xl font-bold tracking-tight">
+        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
           Welcome back, <span className="text-primary">Trainer</span>
         </h1>
-        <p className="text-muted-foreground text-lg">
+        <p className="text-muted-foreground text-base sm:text-lg">
           Manage your clients' fitness journeys all in one place.
         </p>
       </div>

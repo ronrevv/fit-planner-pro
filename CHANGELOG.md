@@ -27,3 +27,9 @@
 - Added new 'Health' route (`/health`) and sidebar navigation item.
 - Implemented 'Health Tracker' page with searchable client selection.
 - Enabled direct management of injury and measurement logs from the Health Tracker page.
+
+## 2026-01-03 16:15 IST (Feature Update)
+- **Feature**: Added "Warmup" section to Workout Plans (Trainer & Client Portal).
+- **Feature**: Added Global Exercise Library with Video/GIF support.
+- **Feature**: Implemented video previews in Workout Plan Builder and Client Portal.
+- **Update**: Enhanced Exercise Selection with autocomplete and case-insensitive library lookup.

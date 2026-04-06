@@ -12,7 +12,7 @@ import type { ItemCompletion } from "@shared/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
-import { goalLabels, fitnessLevelLabels, type Client, type WorkoutPlan, type DietPlan, type InjuryLog, type MeasurementLog, type ClientResource, type TrainerProfile } from "@shared/schema";
+import { goalLabels, fitnessLevelLabels, type Client, type WorkoutPlan, type DietPlan, type InjuryLog, type MeasurementLog, type ClientResource, type TrainerProfile, type ExerciseLibraryItem } from "@shared/schema";
 import { MeasurementChart } from "@/components/clients/measurement-chart";
 import { Link as LinkIcon, FileText, Phone, Mail, User as UserIcon } from "lucide-react";
 
@@ -41,6 +41,11 @@ export default function Portal() {
 
   const { data: completions = [] } = useQuery<ItemCompletion[]>({
     queryKey: ['/api/portal', params.token, 'completions', `?date=${displayDate}`],
+    enabled: !!data,
+  });
+
+  const { data: globalExercises = [] } = useQuery<ExerciseLibraryItem[]>({
+    queryKey: ['/api/exercises'],
     enabled: !!data,
   });
 
@@ -105,7 +110,7 @@ export default function Portal() {
         </div>
       </header>
 
-      <main className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <main className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-6 sm:space-y-8">
         {/* Welcome Section */}
         <section className="space-y-4">
           {dateParam && (
@@ -148,10 +153,10 @@ export default function Portal() {
 
         {/* Dashboard Tabs */}
         <Tabs defaultValue="plans" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 lg:w-[600px]">
-            <TabsTrigger value="plans">Active Plans</TabsTrigger>
-            <TabsTrigger value="progress">Health & Progress</TabsTrigger>
-          <TabsTrigger value="resources">Resources & Info</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 h-auto min-h-10 lg:w-[600px] gap-1 p-1">
+            <TabsTrigger value="plans" className="whitespace-normal">Active Plans</TabsTrigger>
+            <TabsTrigger value="progress" className="whitespace-normal">Health & Progress</TabsTrigger>
+            <TabsTrigger value="resources" className="whitespace-normal">Resources & Info</TabsTrigger>
           </TabsList>
 
           <TabsContent value="plans" className="space-y-6">
@@ -182,39 +187,132 @@ export default function Portal() {
                               {day.isRestDay && <Badge variant="secondary" className="text-xs ml-2">Rest Day</Badge>}
                             </h4>
                             {!day.isRestDay && (
-                              <div className="grid gap-2">
-                                {day.exercises.map((ex) => (
-                                  <div key={ex.id} className="text-sm border rounded-lg p-3 bg-card hover:bg-accent/50 transition-colors">
-                                    <div className="flex items-start gap-3">
-                                      <Checkbox
-                                        id={`ex-${ex.id}`}
-                                        checked={isCompleted('workout', ex.id)}
-                                        onCheckedChange={(checked) => {
-                                          if (currentWorkoutPlan) {
-                                            toggleCompletionMutation.mutate({
-                                              planId: currentWorkoutPlan.id,
-                                              type: 'workout',
-                                              itemId: ex.id,
-                                              completed: !!checked
-                                            });
-                                          }
-                                        }}
-                                      />
-                                      <div className="flex-1">
-                                        <div className="flex justify-between items-start mb-1">
-                                          <label
-                                            htmlFor={`ex-${ex.id}`}
-                                            className={`font-medium cursor-pointer ${isCompleted('workout', ex.id) ? 'line-through text-muted-foreground' : ''}`}
-                                          >
-                                            {ex.name}
-                                          </label>
-                                          <span className="text-muted-foreground text-xs">{ex.sets} x {ex.reps}</span>
+                              <div className="space-y-4">
+                                {/* Warmup */}
+                                {day.warmup && day.warmup.length > 0 && (
+                                  <div>
+                                    <h5 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Warmup</h5>
+                                    <div className="grid gap-2">
+                                      {day.warmup.map((ex) => (
+                                        <div key={ex.id} className="text-sm border rounded-lg p-3 bg-card hover:bg-accent/50 transition-colors">
+                                          <div className="flex items-start gap-3">
+                                            <Checkbox
+                                              id={`wu-${ex.id}`}
+                                              checked={isCompleted('workout', ex.id)}
+                                              onCheckedChange={(checked) => {
+                                                if (currentWorkoutPlan) {
+                                                  toggleCompletionMutation.mutate({
+                                                    planId: currentWorkoutPlan.id,
+                                                    type: 'workout',
+                                                    itemId: ex.id,
+                                                    completed: !!checked
+                                                  });
+                                                }
+                                              }}
+                                            />
+                                            <div className="flex-1">
+                                              {(() => {
+                                                const libEx = globalExercises.find(e => e.name === ex.name);
+                                                return (
+                                                  <>
+                                                    <div className="flex justify-between items-start mb-1">
+                                                      <label
+                                                        htmlFor={`wu-${ex.id}`}
+                                                        className={`font-medium cursor-pointer ${isCompleted('workout', ex.id) ? 'line-through text-muted-foreground' : ''}`}
+                                                      >
+                                                        {ex.name}
+                                                      </label>
+                                                      <span className="text-muted-foreground text-xs">{ex.sets} x {ex.reps}</span>
+                                                    </div>
+                                                    {libEx && (
+                                                      <div className="flex flex-col gap-1 mb-2">
+                                                        <Badge variant="outline" className="text-[10px] uppercase w-fit">{libEx.category}</Badge>
+                                                        <span className="text-xs text-muted-foreground italic leading-relaxed">{libEx.description}</span>
+                                                      </div>
+                                                    )}
+                                                    {ex.videoUrl && (
+                                                      <div className="my-3 rounded-lg overflow-hidden bg-white border border-border/50 shadow-sm p-4 transition-all hover:shadow-md">
+                                                        <img 
+                                                          src={ex.videoUrl} 
+                                                          alt={ex.name} 
+                                                          className="w-full h-48 object-contain transition-transform hover:scale-[1.02]" 
+                                                        />
+                                                      </div>
+                                                    )}
+                                                    {ex.notes && <p className="text-xs text-muted-foreground mt-2 border-l-2 pl-2 border-primary/50 text-primary/80">{ex.notes}</p>}
+                                                  </>
+                                                );
+                                              })()}
+                                            </div>
+                                          </div>
                                         </div>
-                                        {ex.notes && <p className="text-xs text-muted-foreground">{ex.notes}</p>}
-                                      </div>
+                                      ))}
                                     </div>
                                   </div>
-                                ))}
+                                )}
+
+                                {/* Main Workout */}
+                                <div>
+                                  {day.warmup && day.warmup.length > 0 && (
+                                     <h5 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Main Workout</h5>
+                                  )}
+                                  <div className="grid gap-2">
+                                    {day.exercises.map((ex) => (
+                                      <div key={ex.id} className="text-sm border rounded-lg p-3 bg-card hover:bg-accent/50 transition-colors">
+                                        <div className="flex items-start gap-3">
+                                          <Checkbox
+                                            id={`ex-${ex.id}`}
+                                            checked={isCompleted('workout', ex.id)}
+                                            onCheckedChange={(checked) => {
+                                              if (currentWorkoutPlan) {
+                                                toggleCompletionMutation.mutate({
+                                                  planId: currentWorkoutPlan.id,
+                                                  type: 'workout',
+                                                  itemId: ex.id,
+                                                  completed: !!checked
+                                                });
+                                              }
+                                            }}
+                                          />
+                                          <div className="flex-1">
+                                            {(() => {
+                                              const libEx = globalExercises.find(e => e.name === ex.name);
+                                              return (
+                                                <>
+                                                  <div className="flex justify-between items-start mb-1">
+                                                    <label
+                                                      htmlFor={`ex-${ex.id}`}
+                                                      className={`font-medium cursor-pointer ${isCompleted('workout', ex.id) ? 'line-through text-muted-foreground' : ''}`}
+                                                    >
+                                                      {ex.name}
+                                                    </label>
+                                                    <span className="text-muted-foreground text-xs">{ex.sets} x {ex.reps}</span>
+                                                  </div>
+                                                  {libEx && (
+                                                    <div className="flex flex-col gap-1 mb-2">
+                                                      <Badge variant="outline" className="text-[10px] uppercase w-fit">{libEx.category}</Badge>
+                                                      <span className="text-xs text-muted-foreground italic leading-relaxed">{libEx.description}</span>
+                                                    </div>
+                                                  )}
+                                                  {ex.videoUrl && (
+                                                    <div className="my-3 rounded-lg overflow-hidden bg-white border border-border/50 shadow-sm p-4 transition-all hover:shadow-md">
+                                                      <img 
+                                                        src={ex.videoUrl} 
+                                                        alt={ex.name} 
+                                                        className="w-full h-48 object-contain transition-transform hover:scale-[1.02]" 
+                                                      />
+                                                    </div>
+                                                  )}
+                                                  {ex.notes && <p className="text-xs text-muted-foreground mt-2 border-l-2 pl-2 border-primary/50 text-primary/80">{ex.notes}</p>}
+                                                </>
+                                              );
+                                            })()}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
                               </div>
                             )}
                             <Separator />

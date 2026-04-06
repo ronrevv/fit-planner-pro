@@ -30,9 +30,10 @@ import ClientDetail from "@/pages/client-detail";
 import WorkoutPlanBuilder from "@/pages/workout-plan-builder";
 import DietPlanBuilder from "@/pages/diet-plan-builder";
 import HealthTracker from "@/pages/health-tracker";
+import ExerciseLibrary from "@/pages/exercise-library";
 import Portal from "@/pages/portal";
 import NotFound from "@/pages/not-found";
-import { Activity } from "lucide-react";
+import { Activity, Library } from "lucide-react";
 
 const navigation = [
   { title: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -40,6 +41,7 @@ const navigation = [
   { title: "Health", href: "/health", icon: Activity },
   { title: "Workout Plans", href: "/workout-plans/new", icon: Dumbbell },
   { title: "Diet Plans", href: "/diet-plans/new", icon: Utensils },
+  { title: "Exercise Library", href: "/exercises", icon: Library },
 ];
 
 function AppSidebar() {
@@ -115,6 +117,7 @@ function Router() {
       <Route path="/diet-plans/new" component={DietPlanBuilder} />
       <Route path="/diet-plans/:id" component={DietPlanBuilder} />
       <Route path="/health" component={HealthTracker} />
+      <Route path="/exercises" component={ExerciseLibrary} />
       <Route path="/portal/:token" component={Portal} />
       <Route component={NotFound} />
     </Switch>

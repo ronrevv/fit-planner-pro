@@ -1,95 +1,51 @@
-// Common gym exercises categorized by muscle group
+// Common gym exercises categorized by muscle group with high-quality GIF URLs
 export const EXERCISES_LIST = [
   {
     category: "Chest",
     items: [
-      "Barbell Bench Press",
-      "Dumbbell Bench Press",
-      "Incline Bench Press",
-      "Decline Bench Press",
-      "Push-ups",
-      "Chest Flyes",
-      "Cable Crossover",
-      "Dips"
+      { name: "Barbell Bench Press", videoUrl: "https://raw.githubusercontent.com/omercotkd/exercises-gifs/master/gifs/0025.gif" },
+      { name: "Dumbbell Bench Press", videoUrl: "https://raw.githubusercontent.com/omercotkd/exercises-gifs/master/gifs/0033.gif" },
+      { name: "Incline Bench Press", videoUrl: "https://raw.githubusercontent.com/omercotkd/exercises-gifs/master/gifs/0031.gif" },
+      { name: "Push-ups", videoUrl: "https://raw.githubusercontent.com/omercotkd/exercises-gifs/master/gifs/0007.gif" },
+      { name: "Chest Flyes", videoUrl: "https://raw.githubusercontent.com/omercotkd/exercises-gifs/master/gifs/0333.gif" },
+      { name: "Dips", videoUrl: "https://raw.githubusercontent.com/omercotkd/exercises-gifs/master/gifs/0004.gif" }
     ]
   },
   {
     category: "Back",
     items: [
-      "Pull-ups",
-      "Chin-ups",
-      "Lat Pulldown",
-      "Barbell Rows",
-      "Dumbbell Rows",
-      "Seated Cable Rows",
-      "Face Pulls",
-      "Deadlift",
-      "T-Bar Row"
+      { name: "Pull-ups", videoUrl: "https://raw.githubusercontent.com/omercotkd/exercises-gifs/master/gifs/0001.gif" },
+      { name: "Deadlift", videoUrl: "https://raw.githubusercontent.com/omercotkd/exercises-gifs/master/gifs/0032.gif" },
+      { name: "Lat Pulldown", videoUrl: "https://raw.githubusercontent.com/omercotkd/exercises-gifs/master/gifs/0150.gif" },
+      { name: "Barbell Rows", videoUrl: "https://raw.githubusercontent.com/omercotkd/exercises-gifs/master/gifs/0047.gif" },
+      { name: "Seated Cable Rows", videoUrl: "https://raw.githubusercontent.com/omercotkd/exercises-gifs/master/gifs/0170.gif" }
     ]
   },
   {
     category: "Legs",
     items: [
-      "Barbell Squat",
-      "Leg Press",
-      "Lunges",
-      "Leg Extensions",
-      "Leg Curls",
-      "Romanian Deadlift",
-      "Calf Raises",
-      "Bulgarian Split Squat",
-      "Goblet Squat"
+      { name: "Barbell Squat", videoUrl: "https://raw.githubusercontent.com/omercotkd/exercises-gifs/master/gifs/0012.gif" },
+      { name: "Leg Press", videoUrl: "https://raw.githubusercontent.com/omercotkd/exercises-gifs/master/gifs/0593.gif" },
+      { name: "Lunges", videoUrl: "https://raw.githubusercontent.com/omercotkd/exercises-gifs/master/gifs/0015.gif" },
+      { name: "Leg Extensions", videoUrl: "https://raw.githubusercontent.com/omercotkd/exercises-gifs/master/gifs/0585.gif" },
+      { name: "Leg Curls", videoUrl: "https://raw.githubusercontent.com/omercotkd/exercises-gifs/master/gifs/0582.gif" }
     ]
   },
   {
     category: "Shoulders",
     items: [
-      "Overhead Press",
-      "Dumbbell Shoulder Press",
-      "Lateral Raises",
-      "Front Raises",
-      "Reverse Flyes",
-      "Upright Rows",
-      "Arnold Press",
-      "Shrugs"
-    ]
-  },
-  {
-    category: "Arms",
-    items: [
-      "Barbell Curl",
-      "Dumbbell Curl",
-      "Hammer Curl",
-      "Tricep Pushdowns",
-      "Skull Crushers",
-      "Overhead Tricep Extension",
-      "Preacher Curl",
-      "Concentration Curl"
+      { name: "Overhead Press", videoUrl: "https://raw.githubusercontent.com/omercotkd/exercises-gifs/master/gifs/0013.gif" },
+      { name: "Lateral Raises", videoUrl: "https://raw.githubusercontent.com/omercotkd/exercises-gifs/master/gifs/0010.gif" },
+      { name: "Front Raises", videoUrl: "https://raw.githubusercontent.com/omercotkd/exercises-gifs/master/gifs/0009.gif" },
+      { name: "Arnold Press", videoUrl: "https://raw.githubusercontent.com/omercotkd/exercises-gifs/master/gifs/0011.gif" }
     ]
   },
   {
     category: "Core",
     items: [
-      "Crunches",
-      "Plank",
-      "Leg Raises",
-      "Russian Twists",
-      "Ab Wheel Rollout",
-      "Mountain Climbers",
-      "Bicycle Crunches",
-      "Hanging Leg Raise"
-    ]
-  },
-  {
-    category: "Cardio",
-    items: [
-      "Treadmill Run",
-      "Cycling",
-      "Elliptical",
-      "Rowing Machine",
-      "Jump Rope",
-      "Stair Climber",
-      "Burpees"
+      { name: "Plank", videoUrl: "https://raw.githubusercontent.com/omercotkd/exercises-gifs/master/gifs/0008.gif" },
+      { name: "Crunches", videoUrl: "https://raw.githubusercontent.com/omercotkd/exercises-gifs/master/gifs/0002.gif" },
+      { name: "Leg Raises", videoUrl: "https://raw.githubusercontent.com/omercotkd/exercises-gifs/master/gifs/0003.gif" }
     ]
   }
 ];
@@ -97,8 +53,9 @@ export const EXERCISES_LIST = [
 // Flat list for easier searching
 export const ALL_EXERCISES = EXERCISES_LIST.flatMap(category =>
   category.items.map(item => ({
-    label: item,
-    value: item,
+    label: item.name,
+    value: item.name,
+    videoUrl: item.videoUrl,
     category: category.category
   }))
 );
