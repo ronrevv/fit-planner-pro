@@ -10,7 +10,11 @@ import {
   type Trainer, type InsertTrainer,
   type Session, type InsertSession,
   type Payment, type InsertPayment,
-  type LibraryItem, type InsertLibraryItem
+  type LibraryItem, type InsertLibraryItem,
+  type SocialProfile, type InsertSocialProfile,
+  type MatchRequest, type InsertMatchRequest,
+  type ChatMessage, type InsertChatMessage,
+  type AttendanceLog, type InsertAttendanceLog
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -92,6 +96,25 @@ export interface IStorage {
   // Library
   createLibraryItem(item: InsertLibraryItem): Promise<LibraryItem>;
   getLibraryItemsByGym(gymId: string): Promise<LibraryItem[]>;
+
+  // Social
+  getSocialProfile(clientId: string): Promise<SocialProfile | undefined>;
+  updateSocialProfile(clientId: string, profile: InsertSocialProfile): Promise<SocialProfile>;
+  getAllSocialProfiles(): Promise<SocialProfile[]>;
+
+  // Matches
+  createMatchRequest(request: InsertMatchRequest): Promise<MatchRequest>;
+  getMatchRequests(clientId: string): Promise<MatchRequest[]>;
+  updateMatchRequest(id: string, status: "accepted" | "declined"): Promise<MatchRequest | undefined>;
+
+  // Chat
+  createChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
+  getChatHistory(userA: string, userB: string): Promise<ChatMessage[]>;
+
+  // Attendance
+  logAttendance(log: InsertAttendanceLog): Promise<AttendanceLog>;
+  getAttendanceLogs(clientId: string): Promise<AttendanceLog[]>;
+  getAllAttendanceLogs(): Promise<AttendanceLog[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -110,6 +133,10 @@ export class MemStorage implements IStorage {
   private sessions: Map<string, Session>;
   private payments: Map<string, Payment>;
   private libraryItems: Map<string, LibraryItem>;
+  private socialProfiles: Map<string, SocialProfile>;
+  private matchRequests: Map<string, MatchRequest>;
+  private chatMessages: Map<string, ChatMessage>;
+  private attendanceLogs: Map<string, AttendanceLog>;
 
   constructor() {
     this.users = new Map();
@@ -126,6 +153,10 @@ export class MemStorage implements IStorage {
     this.sessions = new Map();
     this.payments = new Map();
     this.libraryItems = new Map();
+    this.socialProfiles = new Map();
+    this.matchRequests = new Map();
+    this.chatMessages = new Map();
+    this.attendanceLogs = new Map();
   }
 
   // Users
@@ -464,6 +495,76 @@ export class MemStorage implements IStorage {
 
   async getLibraryItemsByGym(gymId: string): Promise<LibraryItem[]> {
     return Array.from(this.libraryItems.values()).filter(i => i.gymId === gymId);
+  }
+
+  // Social
+  async getSocialProfile(clientId: string): Promise<SocialProfile | undefined> {
+    return Array.from(this.socialProfiles.values()).find(p => p.clientId === clientId);
+  }
+
+  async updateSocialProfile(clientId: string, profile: InsertSocialProfile): Promise<SocialProfile> {
+    const existing = await this.getSocialProfile(clientId);
+    const id = existing?.id || randomUUID();
+    const updated = { ...profile, id, clientId };
+    this.socialProfiles.set(id, updated);
+    return updated;
+  }
+
+  async getAllSocialProfiles(): Promise<SocialProfile[]> {
+    return Array.from(this.socialProfiles.values());
+  }
+
+  // Matches
+  async createMatchRequest(insert: InsertMatchRequest): Promise<MatchRequest> {
+    const id = randomUUID();
+    const request: MatchRequest = { ...insert, id, createdAt: new Date().toISOString() };
+    this.matchRequests.set(id, request);
+    return request;
+  }
+
+  async getMatchRequests(clientId: string): Promise<MatchRequest[]> {
+    return Array.from(this.matchRequests.values()).filter(
+      r => r.fromClientId === clientId || r.toClientId === clientId
+    );
+  }
+
+  async updateMatchRequest(id: string, status: "accepted" | "declined"): Promise<MatchRequest | undefined> {
+    const req = this.matchRequests.get(id);
+    if (!req) return undefined;
+    const updated = { ...req, status };
+    this.matchRequests.set(id, updated);
+    return updated;
+  }
+
+  // Chat
+  async createChatMessage(insert: InsertChatMessage): Promise<ChatMessage> {
+    const id = randomUUID();
+    const message: ChatMessage = { ...insert, id, timestamp: new Date().toISOString() };
+    this.chatMessages.set(id, message);
+    return message;
+  }
+
+  async getChatHistory(userA: string, userB: string): Promise<ChatMessage[]> {
+    return Array.from(this.chatMessages.values()).filter(
+      m => (m.senderId === userA && m.receiverId === userB) ||
+           (m.senderId === userB && m.receiverId === userA)
+    ).sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+  }
+
+  // Attendance
+  async logAttendance(insert: InsertAttendanceLog): Promise<AttendanceLog> {
+    const id = randomUUID();
+    const log = { ...insert, id };
+    this.attendanceLogs.set(id, log);
+    return log;
+  }
+
+  async getAttendanceLogs(clientId: string): Promise<AttendanceLog[]> {
+    return Array.from(this.attendanceLogs.values()).filter(l => l.clientId === clientId);
+  }
+
+  async getAllAttendanceLogs(): Promise<AttendanceLog[]> {
+    return Array.from(this.attendanceLogs.values());
   }
 }
 

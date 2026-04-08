@@ -53,6 +53,8 @@ export default function ClientForm() {
       goal: "muscle_gain",
       fitnessLevel: "intermediate",
       notes: "",
+      city: "",
+      state: "",
     },
   });
 
@@ -68,6 +70,8 @@ export default function ClientForm() {
         goal: existingClient.goal,
         fitnessLevel: existingClient.fitnessLevel,
         notes: existingClient.notes || "",
+        city: existingClient.city || "",
+        state: existingClient.state || "",
       });
     }
   }, [existingClient, form]);
@@ -79,6 +83,11 @@ export default function ClientForm() {
     },
     onSuccess: (newClient: Client) => {
       queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
+      if (activeTrainer) {
+        queryClient.invalidateQueries({
+          queryKey: [`/api/clients?trainerId=${activeTrainer.id}`]
+        });
+      }
       toast({
         title: "Client created",
         description: `${newClient.name} has been added successfully.`,
@@ -101,6 +110,11 @@ export default function ClientForm() {
     },
     onSuccess: (updatedClient: Client) => {
       queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
+      if (activeTrainer) {
+        queryClient.invalidateQueries({
+          queryKey: [`/api/clients?trainerId=${activeTrainer.id}`]
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ['/api/clients', params.id] });
       toast({
         title: "Client updated",
@@ -234,6 +248,44 @@ export default function ClientForm() {
                           placeholder="+1 234 567 8900" 
                           {...field} 
                           data-testid="input-client-phone"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="city"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>City</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="e.g. New York"
+                          {...field}
+                          data-testid="input-client-city"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="state"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>State/Province</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="e.g. NY"
+                          {...field}
+                          data-testid="input-client-state"
                         />
                       </FormControl>
                       <FormMessage />

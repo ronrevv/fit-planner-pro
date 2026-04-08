@@ -176,6 +176,13 @@ export async function registerRoutes(
 
   // ==================== CLIENTS ====================
   
+  app.get("/api/clients/me", async (req, res) => {
+    // In a real app with auth, this would use req.user.
+    // For this prototype, we return the first client as the "current" portal user.
+    const clients = await storage.getAllClients();
+    res.json(clients[0] || null);
+  });
+
   // Get all clients (optionally filtered by trainer)
   app.get("/api/clients", async (req, res) => {
     try {
@@ -688,6 +695,165 @@ export async function registerRoutes(
       res.json(profile);
     } catch (error) {
       res.status(500).json({ message: "Failed to update trainer profile" });
+    }
+  });
+
+  // ==================== CLONING & TEMPLATES ====================
+
+  app.post("/api/workout-plans/:id/clone", async (req, res) => {
+    try {
+      const { targetClientId, name } = req.body;
+      const original = await storage.getWorkoutPlan(req.params.id);
+      if (!original) return res.status(404).json({ message: "Original plan not found" });
+
+      const newPlan = await storage.createWorkoutPlan({
+        ...original,
+        clientId: targetClientId,
+        name: name || `${original.name} (Clone)`,
+      });
+      res.status(201).json(newPlan);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to clone workout plan" });
+    }
+  });
+
+  app.post("/api/diet-plans/:id/clone", async (req, res) => {
+    try {
+      const { targetClientId, name } = req.body;
+      const original = await storage.getDietPlan(req.params.id);
+      if (!original) return res.status(404).json({ message: "Original plan not found" });
+
+      const newPlan = await storage.createDietPlan({
+        ...original,
+        clientId: targetClientId,
+        name: name || `${original.name} (Clone)`,
+      });
+      res.status(201).json(newPlan);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to clone diet plan" });
+    }
+  });
+
+  // ==================== SOCIAL & HUB ====================
+
+  app.get("/api/social/profiles", async (req, res) => {
+    try {
+      const profiles = await storage.getAllSocialProfiles();
+      res.json(profiles);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch social profiles" });
+    }
+  });
+
+  app.get("/api/social/profiles/:clientId", async (req, res) => {
+    try {
+      const profile = await storage.getSocialProfile(req.params.clientId);
+      res.json(profile || null);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch social profile" });
+    }
+  });
+
+  app.post("/api/social/profiles/:clientId", async (req, res) => {
+    try {
+      const profile = await storage.updateSocialProfile(req.params.clientId, req.body);
+      res.json(profile);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update social profile" });
+    }
+  });
+
+  app.get("/api/social/matches/:clientId", async (req, res) => {
+    try {
+      const matches = await storage.getMatchRequests(req.params.clientId);
+      res.json(matches);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch matches" });
+    }
+  });
+
+  app.post("/api/social/matches", async (req, res) => {
+    try {
+      const match = await storage.createMatchRequest(req.body);
+      res.status(201).json(match);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create match request" });
+    }
+  });
+
+  app.patch("/api/social/matches/:id", async (req, res) => {
+    try {
+      const match = await storage.updateMatchRequest(req.params.id, req.body.status);
+      res.json(match);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update match status" });
+    }
+  });
+
+  // ==================== CHAT ====================
+
+  app.get("/api/chat/:userA/:userB", async (req, res) => {
+    try {
+      const messages = await storage.getChatHistory(req.params.userA, req.params.userB);
+      res.json(messages);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch chat history" });
+    }
+  });
+
+  app.post("/api/chat", async (req, res) => {
+    try {
+      const message = await storage.createChatMessage(req.body);
+      res.status(201).json(message);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+
+  // ==================== LEADERBOARDS ====================
+
+  app.get("/api/leaderboards", async (req, res) => {
+    try {
+      const scope = req.query.scope as string || "global"; // global, state, city
+      const type = req.query.type as string || "attendance"; // attendance, weight_loss
+
+      const logs = await storage.getAllAttendanceLogs();
+      const clients = await storage.getAllClients();
+
+      // Calculate attendance counts
+      const counts: Record<string, number> = {};
+      logs.forEach(log => {
+        counts[log.clientId] = (counts[log.clientId] || 0) + 1;
+      });
+
+      const leaderboard = clients.map(c => ({
+        id: c.id,
+        name: c.name,
+        city: (c as any).city,
+        state: (c as any).state,
+        score: counts[c.id] || 0
+      }))
+      .filter(c => {
+        if (scope === "global") return true;
+        if (scope === "state") return c.state === req.query.state;
+        if (scope === "city") return c.city === req.query.city;
+        return true;
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
+
+      res.json(leaderboard);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch leaderboard" });
+    }
+  });
+
+  app.post("/api/attendance", async (req, res) => {
+    try {
+      const log = await storage.logAttendance(req.body);
+      res.status(201).json(log);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to log attendance" });
     }
   });
 

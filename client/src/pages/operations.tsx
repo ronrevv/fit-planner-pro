@@ -23,7 +23,11 @@ import {
   MoreVertical,
   Clock3,
   AlertCircle,
-  DollarSign
+  DollarSign,
+  TrendingUp,
+  ArrowUpRight,
+  ShieldCheck,
+  CreditCard as StripeIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -41,6 +45,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
+  DialogDescription
 } from "@/components/ui/dialog";
 import { format } from "date-fns";
 import { useAppContext } from "@/hooks/use-app-context";
@@ -121,8 +127,81 @@ export default function Operations() {
     );
   }
 
+  const totalRevenue = payments?.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0) || 0;
+  const pendingRevenue = payments?.filter(p => p.status === 'pending').reduce((sum, p) => sum + p.amount, 0) || 0;
+
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-700">
+      {/* Revenue Dashboard */}
+      <div className="grid gap-6 md:grid-cols-3">
+        <Card className="bg-primary text-primary-foreground border-none shadow-2xl shadow-primary/20 overflow-hidden relative group">
+          <div className="absolute right-[-20px] top-[-20px] opacity-10 group-hover:scale-110 transition-transform duration-700">
+             <TrendingUp className="h-40 w-40" />
+          </div>
+          <CardHeader className="pb-2">
+            <CardDescription className="text-primary-foreground/70 font-black uppercase tracking-widest text-[10px]">Total Revenue</CardDescription>
+            <CardTitle className="text-4xl font-black italic">${totalRevenue.toLocaleString()}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2 text-xs font-bold text-primary-foreground/80">
+              <ArrowUpRight className="h-3 w-3" />
+              <span>+12.5% from last month</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-none shadow-xl bg-card overflow-hidden relative group">
+          <CardHeader className="pb-2">
+            <CardDescription className="font-black uppercase tracking-widest text-[10px]">Pending Invoices</CardDescription>
+            <CardTitle className="text-4xl font-black italic text-amber-500">${pendingRevenue.toLocaleString()}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
+              <Clock className="h-3 w-3" />
+              <span>{payments?.filter(p => p.status === 'pending').length || 0} unpaid records</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-none shadow-xl bg-card overflow-hidden flex flex-col justify-center p-6 border-2 border-dashed border-primary/20 hover:border-primary/40 transition-colors">
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="h-full w-full border-none flex flex-col gap-2 hover:bg-primary/5">
+                <StripeIcon className="h-8 w-8 text-primary" />
+                <span className="font-black uppercase tracking-widest text-xs">Stripe Connect</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader className="space-y-4">
+                <div className="mx-auto w-12 h-12 rounded-2xl bg-[#635BFF]/10 flex items-center justify-center">
+                   <StripeIcon className="h-6 w-6 text-[#635BFF]" />
+                </div>
+                <div className="text-center">
+                  <DialogTitle className="text-2xl font-black uppercase tracking-tight">Connect with Stripe</DialogTitle>
+                  <DialogDescription className="font-bold uppercase text-[10px] tracking-widest pt-1">
+                    Direct Payouts & Automated Invoicing
+                  </DialogDescription>
+                </div>
+              </DialogHeader>
+              <div className="bg-muted/50 p-6 rounded-2xl space-y-4 border-2 border-dashed border-muted-foreground/10">
+                 <div className="flex items-start gap-3">
+                   <ShieldCheck className="h-5 w-5 text-emerald-500 mt-0.5" />
+                   <div>
+                     <p className="text-sm font-bold uppercase tracking-tight">Secure Onboarding</p>
+                     <p className="text-xs text-muted-foreground">Stripe handles all identity verification and sensitive banking data.</p>
+                   </div>
+                 </div>
+              </div>
+              <DialogFooter>
+                 <Button className="w-full h-12 font-black uppercase tracking-widest bg-[#635BFF] hover:bg-[#635BFF]/90">
+                   Setup Stripe Express
+                 </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </Card>
+      </div>
+
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-primary font-bold uppercase tracking-wider text-sm">

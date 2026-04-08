@@ -1,0 +1,21 @@
+{
+  "name": "FitPro Trainer Platform",
+  "short_name": "FitPro",
+  "description": "Professional gym trainer platform for workout and diet planning.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ea580c",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

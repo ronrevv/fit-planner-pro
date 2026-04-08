@@ -37,11 +37,13 @@ import AdminDashboard from "@/pages/admin-dashboard";
 import GymOnboarding from "@/pages/gym-onboarding";
 import SharedLibrary from "@/pages/shared-library";
 import Operations from "@/pages/operations";
+import CommunityHub from "@/pages/community-hub";
 import { Activity } from "lucide-react";
 
 const navigation = [
   { title: "Dashboard", href: "/", icon: LayoutDashboard },
   { title: "Clients", href: "/clients", icon: Users },
+  { title: "Community", href: "/community", icon: Users },
   { title: "Operations", href: "/operations", icon: Clock },
   { title: "Library", href: "/library", icon: BookOpen },
   { title: "Health", href: "/health", icon: Activity },
@@ -142,6 +144,7 @@ function Router() {
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/gym/new" component={GymOnboarding} />
       <Route path="/library" component={SharedLibrary} />
+      <Route path="/community" component={CommunityHub} />
       <Route path="/operations" component={Operations} />
       <Route path="/clients" component={Clients} />
       <Route path="/clients/new" component={ClientForm} />

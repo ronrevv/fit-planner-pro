@@ -32,6 +32,7 @@ export type InsertTrainer = z.infer<typeof insertTrainerSchema>;
 export const clientSchema = z.object({
   id: z.string(),
   trainerId: z.string().optional(), // Link to trainer
+  gymId: z.string().optional(),
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Valid email required"),
   phone: z.string().min(10, "Phone number required"),
@@ -42,6 +43,9 @@ export const clientSchema = z.object({
   fitnessLevel: z.enum(["beginner", "intermediate", "advanced"]),
   notes: z.string().optional(),
   token: z.string().optional(), // Public portal access token
+  city: z.string().optional(),
+  state: z.string().optional(),
+  country: z.string().default("Global"),
 });
 
 export const insertClientSchema = clientSchema.omit({ id: true, token: true });
@@ -191,15 +195,72 @@ export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 export const libraryItemSchema = z.object({
   id: z.string(),
   gymId: z.string(),
-  type: z.enum(["exercise", "meal"]),
+  type: z.enum(["exercise", "meal", "workout_plan", "diet_plan"]),
   name: z.string().min(1),
-  data: z.any(), // Flexible for exercise details or meal details
+  data: z.any(), // Flexible for exercise details, meal details, or plan templates
   createdAt: z.string(),
 });
 
 export const insertLibraryItemSchema = libraryItemSchema.omit({ id: true, createdAt: true });
 export type LibraryItem = z.infer<typeof libraryItemSchema>;
 export type InsertLibraryItem = z.infer<typeof insertLibraryItemSchema>;
+
+// Social Profile Schema
+export const socialProfileSchema = z.object({
+  id: z.string(),
+  clientId: z.string(),
+  displayName: z.string().min(1),
+  bio: z.string().optional(),
+  interests: z.array(z.string()),
+  photos: z.array(z.string()),
+  isDatingEnabled: z.boolean().default(false),
+  gender: z.string().optional(),
+  lookingFor: z.string().optional(),
+});
+
+export const insertSocialProfileSchema = socialProfileSchema.omit({ id: true });
+export type SocialProfile = z.infer<typeof socialProfileSchema>;
+export type InsertSocialProfile = z.infer<typeof insertSocialProfileSchema>;
+
+// Match/Buddy Request Schema
+export const matchRequestSchema = z.object({
+  id: z.string(),
+  fromClientId: z.string(),
+  toClientId: z.string(),
+  status: z.enum(["pending", "accepted", "declined"]),
+  type: z.enum(["buddy", "date"]),
+  createdAt: z.string(),
+});
+
+export const insertMatchRequestSchema = matchRequestSchema.omit({ id: true, createdAt: true });
+export type MatchRequest = z.infer<typeof matchRequestSchema>;
+export type InsertMatchRequest = z.infer<typeof insertMatchRequestSchema>;
+
+// Chat Message Schema
+export const chatMessageSchema = z.object({
+  id: z.string(),
+  senderId: z.string(), // Can be clientId or trainerId
+  receiverId: z.string(),
+  content: z.string().min(1),
+  timestamp: z.string(),
+  isRead: z.boolean().default(false),
+});
+
+export const insertChatMessageSchema = chatMessageSchema.omit({ id: true, timestamp: true });
+export type ChatMessage = z.infer<typeof chatMessageSchema>;
+export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
+
+// Attendance Log Schema
+export const attendanceLogSchema = z.object({
+  id: z.string(),
+  clientId: z.string(),
+  date: z.string(), // YYYY-MM-DD
+  gymId: z.string(),
+});
+
+export const insertAttendanceLogSchema = attendanceLogSchema.omit({ id: true });
+export type AttendanceLog = z.infer<typeof attendanceLogSchema>;
+export type InsertAttendanceLog = z.infer<typeof insertAttendanceLogSchema>;
 
 // User Schema
 export const users = {

@@ -3,7 +3,8 @@ import { useParams, useLocation, Link } from "wouter";
 import { 
   ArrowLeft, Edit, Trash2, Dumbbell, Utensils, FileText, Download, 
   Phone, Mail, Target, Activity, Scale, Ruler, Calendar, Plus,
-  Share2, Loader2, MoreVertical, HeartPulse, Link as LinkIcon
+  Share2, Loader2, MoreVertical, HeartPulse, Link as LinkIcon,
+  Copy, Save as SaveIcon
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,8 @@ import { MeasurementLogList } from "@/components/clients/measurement-log";
 import { MeasurementChart } from "@/components/clients/measurement-chart";
 import { ClientResources } from "@/components/clients/client-resources";
 import { MeasurementLog } from "@shared/schema";
+import { ChatSystem } from "@/components/chat-system";
+import { MessageCircle } from "lucide-react";
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -77,6 +80,37 @@ function PlanCard({
     const message = `Hi ${client.name}!\n\nYour ${type === 'workout' ? 'Workout' : 'Diet'} Plan for ${MONTH_NAMES[plan.month - 1]} ${plan.year} is ready!\n\nPlan: ${plan.name}\n\nDownload the PDF or contact me for any questions.\n\n- Your Trainer`;
     shareToWhatsApp(message, client.phone);
   };
+
+  const { toast } = useToast();
+
+  const cloneMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', `/api/${type}-plans/${plan.id}/clone`, {
+        targetClientId: client.id,
+        name: `${plan.name} (Clone)`
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/${type}-plans`] });
+      toast({ title: "Plan Cloned", description: "A copy has been created for this client." });
+    }
+  });
+
+  const saveTemplateMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/library', {
+        gymId: client.gymId,
+        type: type === 'workout' ? 'workout_plan' : 'diet_plan',
+        name: `${plan.name} Template`,
+        data: plan
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Saved to Library", description: "This plan is now available as a template for the gym." });
+    }
+  });
 
   return (
     <Card data-testid={`card-${type}-plan-${plan.id}`}>
@@ -127,6 +161,15 @@ function PlanCard({
               <DropdownMenuItem onClick={handleShareWhatsApp} data-testid={`menuitem-share-whatsapp-${plan.id}`}>
                 <Share2 className="h-4 w-4 mr-2" />
                 Share via WhatsApp
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => cloneMutation.mutate()} disabled={cloneMutation.isPending}>
+                <Copy className="h-4 w-4 mr-2" />
+                Clone Plan
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => saveTemplateMutation.mutate()} disabled={saveTemplateMutation.isPending}>
+                <SaveIcon className="h-4 w-4 mr-2" />
+                Save as Template
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem 
@@ -180,6 +223,7 @@ export default function ClientDetail() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [planToDelete, setPlanToDelete] = useState<{ id: string; type: 'workout' | 'diet' } | null>(null);
   const [selectedPortalDate, setSelectedPortalDate] = useState<Date | undefined>(new Date());
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   const { data: client, isLoading: clientLoading } = useQuery<Client>({
     queryKey: ['/api/clients', params.id],
@@ -382,6 +426,14 @@ export default function ClientDetail() {
               Edit
             </Button>
           </Link>
+          <Button
+            variant="outline"
+            onClick={() => setIsChatOpen(true)}
+            className="gap-2"
+          >
+            <MessageCircle className="h-4 w-4" />
+            Chat
+          </Button>
           <Button 
             variant="outline" 
             className="text-destructive hover:text-destructive"
@@ -632,6 +684,15 @@ export default function ClientDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {isChatOpen && client && (
+        <ChatSystem
+          currentUserId={client.trainerId || "trainer-1"}
+          targetUserId={client.id}
+          targetUserName={client.name}
+          onClose={() => setIsChatOpen(false)}
+        />
+      )}
     </div>
   );
 }
