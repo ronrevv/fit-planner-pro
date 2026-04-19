@@ -64,11 +64,26 @@ export const exerciseSchema = z.object({
 
 export type Exercise = z.infer<typeof exerciseSchema>;
 
+// Meal Schema
+export const mealSchema = z.object({
+  id: z.string(),
+  type: z.enum(["breakfast", "snack_morning", "lunch", "snack_afternoon", "dinner"]),
+  name: z.string().min(1),
+  description: z.string().optional(),
+  calories: z.number().min(0).max(3000),
+  protein: z.number().min(0).max(300),
+  carbs: z.number().min(0).max(500),
+  fat: z.number().min(0).max(200),
+});
+
+export type Meal = z.infer<typeof mealSchema>;
+
 // Day Workout Schema
 export const dayWorkoutSchema = z.object({
   day: z.number().min(1).max(31),
   isRestDay: z.boolean(),
   exercises: z.array(exerciseSchema),
+  meals: z.array(mealSchema).optional().default([]),
   notes: z.string().optional(),
 });
 
@@ -88,19 +103,7 @@ export const insertWorkoutPlanSchema = workoutPlanSchema.omit({ id: true });
 export type WorkoutPlan = z.infer<typeof workoutPlanSchema>;
 export type InsertWorkoutPlan = z.infer<typeof insertWorkoutPlanSchema>;
 
-// Meal Schema
-export const mealSchema = z.object({
-  id: z.string(),
-  type: z.enum(["breakfast", "snack_morning", "lunch", "snack_afternoon", "dinner"]),
-  name: z.string().min(1),
-  description: z.string().optional(),
-  calories: z.number().min(0).max(3000),
-  protein: z.number().min(0).max(300),
-  carbs: z.number().min(0).max(500),
-  fat: z.number().min(0).max(200),
-});
 
-export type Meal = z.infer<typeof mealSchema>;
 
 // Day Diet Schema
 export const dayDietSchema = z.object({

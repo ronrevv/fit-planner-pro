@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Search, Plus, Dumbbell, HeartPulse, Flame, ChevronDown, ChevronUp, Info } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -20,24 +20,14 @@ import {
   type InjuryType,
 } from "@/lib/exercises";
 
-// Image component with GIF-like looping animation between frames
+// Image component to display GIF
 function ExerciseImage({ exercise, size = "md" }: { exercise: ExerciseInfo; size?: "sm" | "md" }) {
-  const [imgIndex, setImgIndex] = useState(0);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
   
-  // Create GIF-like playback continuously
-  useEffect(() => {
-    if (exercise.images.length <= 1) return;
-    const interval = setInterval(() => {
-      setImgIndex((prev) => (prev + 1) % exercise.images.length);
-    }, 1200); 
-    return () => clearInterval(interval);
-  }, [exercise.images.length]);
-
   const sizeClasses = size === "sm" ? "w-14 h-14" : "w-full aspect-[4/3]";
 
-  if (error || exercise.images.length === 0) {
+  if (error || !exercise.videoUrl) {
     return (
       <div className={cn(sizeClasses, "bg-muted rounded-lg flex items-center justify-center")}>
         <Dumbbell className="h-5 w-5 text-muted-foreground/40" />
@@ -48,10 +38,10 @@ function ExerciseImage({ exercise, size = "md" }: { exercise: ExerciseInfo; size
   return (
     <div className={cn(sizeClasses, "relative rounded-lg overflow-hidden bg-muted group")}>
       <img
-        src={getExerciseImageUrl(exercise.images[imgIndex])}
+        src={exercise.videoUrl}
         alt={exercise.name}
         className={cn(
-          "w-full h-full object-cover transition-opacity duration-300",
+          "w-full h-full object-contain transition-opacity duration-300",
           loaded ? "opacity-100" : "opacity-0"
         )}
         loading="lazy"
@@ -60,12 +50,6 @@ function ExerciseImage({ exercise, size = "md" }: { exercise: ExerciseInfo; size
       />
       {!loaded && !error && (
         <div className="absolute inset-0 bg-muted animate-pulse rounded-lg" />
-      )}
-      {exercise.images.length > 1 && loaded && (
-        <div className="absolute bottom-1 right-1 flex gap-0.5">
-          <div className={cn("w-1.5 h-1.5 rounded-full transition-colors", imgIndex === 0 ? "bg-white" : "bg-white/40")} />
-          <div className={cn("w-1.5 h-1.5 rounded-full transition-colors", imgIndex === 1 ? "bg-white" : "bg-white/40")} />
-        </div>
       )}
     </div>
   );

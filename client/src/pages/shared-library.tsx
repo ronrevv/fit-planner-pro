@@ -27,6 +27,7 @@ import {
   Sparkles,
   Zap,
   Filter,
+  Info,
   CheckSquare,
   Square,
   Loader2
@@ -70,7 +71,8 @@ export default function SharedLibrary() {
   const [search, setSearch] = useState("");
   const [newItemName, setNewItemName] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [assignItem, setAssignItem] = useState<any>(null);
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
+  const [instructionItem, setInstructionItem] = useState<any>(null);
   const [selectedClientId, setSelectedClientId] = useState("");
 
   // Filtering states
@@ -206,22 +208,29 @@ export default function SharedLibrary() {
 
   const assignMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedClientId || !assignItem) return;
-      const payload = {
-        clientId: selectedClientId,
-        title: `Recommended: ${assignItem.name}`,
-        type: "link",
-        url: "#",
-        description: `This ${assignItem.type || 'template'} was referred to you by your trainer.`
-      };
-      const res = await apiRequest("POST", `/api/clients/${selectedClientId}/resources`, payload);
-      if (!res.ok) throw new Error("Failed to assign item");
-      return res.json();
+      if (!selectedClientId || selectedItemIds.size === 0) return;
+      
+      const itemsToAssign = Array.from(selectedItemIds).map(id => {
+        const source = activeTab === "exercises" ? allExercises : allMeals;
+        return source.find(i => i.id === id);
+      }).filter(Boolean);
+
+      for (const item of itemsToAssign) {
+        const payload = {
+          clientId: selectedClientId,
+          title: `Recommended: ${item?.name}`,
+          type: "link",
+          url: (item as any)?.videoUrl || "#",
+          description: `This ${item?.type || 'template'} was referred to you by your trainer.`
+        };
+        await apiRequest("POST", `/api/clients/${selectedClientId}/resources`, payload);
+      }
     },
     onSuccess: () => {
-      toast({ title: "Successfully Assigned" });
-      setAssignItem(null);
+      toast({ title: `Successfully Assigned ${selectedItemIds.size} items!` });
+      setIsAssignDialogOpen(false);
       setSelectedClientId("");
+      setSelectedItemIds(new Set());
     }
   });
 
@@ -256,15 +265,25 @@ export default function SharedLibrary() {
 
         <div className="flex gap-3">
           {selectedItemIds.size > 0 && (
-            <Button
-              variant="default"
-              className="font-bold bg-orange-600 hover:bg-orange-700 shadow-lg shadow-orange-600/20 animate-in slide-in-from-right"
-              onClick={() => bulkAddMutation.mutate()}
-              disabled={bulkAddMutation.isPending}
-            >
-              {bulkAddMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-              Import {selectedItemIds.size} to Gym
-            </Button>
+            <>
+              <Button
+                variant="default"
+                className="font-bold bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 animate-in slide-in-from-right"
+                onClick={() => setIsAssignDialogOpen(true)}
+              >
+                <Send className="mr-2 h-4 w-4" />
+                Refer {selectedItemIds.size} to Client
+              </Button>
+              <Button
+                variant="default"
+                className="font-bold bg-orange-600 hover:bg-orange-700 shadow-lg shadow-orange-600/20 animate-in slide-in-from-right"
+                onClick={() => bulkAddMutation.mutate()}
+                disabled={bulkAddMutation.isPending}
+              >
+                {bulkAddMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                Import {selectedItemIds.size} to Gym
+              </Button>
+            </>
           )}
           <Button variant="outline" className="font-bold border-2" onClick={() => setIsAddDialogOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
@@ -388,7 +407,7 @@ export default function SharedLibrary() {
                       <img
                         src={videoUrl}
                         alt={item.name}
-                        className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
+                        className="w-full h-full object-contain transform group-hover:scale-105 transition-transform duration-700"
                         loading="lazy"
                       />
                     ) : (
@@ -424,11 +443,12 @@ export default function SharedLibrary() {
 
                   <CardFooter className="pt-0 pb-6 px-6">
                     <Button
-                      className="w-full h-11 font-black uppercase tracking-widest text-xs gap-2 group shadow-xl shadow-primary/10 rounded-xl"
-                      onClick={() => setAssignItem(item)}
+                      variant="outline"
+                      className="w-full h-11 font-black uppercase tracking-widest text-xs gap-2 group border-2"
+                      onClick={() => setInstructionItem(item)}
                     >
-                      <Send className="h-4 w-4 group-hover:-translate-y-1 group-hover:translate-x-1 transition-transform" />
-                      Refer to Client
+                      <Info className="h-4 w-4" />
+                      View Instructions
                     </Button>
                   </CardFooter>
                 </Card>
@@ -448,8 +468,8 @@ export default function SharedLibrary() {
         </div>
       </div>
 
-      {/* Referral Dialog - Remains similar but styled */}
-      <Dialog open={!!assignItem} onOpenChange={(open) => !open && setAssignItem(null)}>
+      {/* Referral Dialog */}
+      <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
         <DialogContent className="sm:max-w-md border-none shadow-2xl">
           <DialogHeader className="space-y-4">
             <div className="mx-auto w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
@@ -458,7 +478,7 @@ export default function SharedLibrary() {
             <div className="text-center space-y-1">
               <DialogTitle className="text-3xl font-black uppercase tracking-tighter">Refer Asset</DialogTitle>
               <DialogDescription className="font-bold text-muted-foreground uppercase text-[10px] tracking-[0.2em]">
-                Sending <span className="text-primary">{assignItem?.name}</span>
+                Sending <span className="text-primary">{selectedItemIds.size} selected items</span>
               </DialogDescription>
             </div>
           </DialogHeader>
@@ -489,6 +509,34 @@ export default function SharedLibrary() {
               {assignMutation.isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Zap className="mr-2 h-5 w-5 fill-current" />}
               Execute Referral
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Instruction Dialog */}
+      <Dialog open={!!instructionItem} onOpenChange={(open) => !open && setInstructionItem(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black uppercase tracking-tight">{instructionItem?.name}</DialogTitle>
+            <DialogDescription className="uppercase tracking-widest text-[10px] font-bold text-primary">
+              {instructionItem?.target}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            {instructionItem?.videoUrl && (
+              <div className="w-full aspect-video rounded-xl overflow-hidden bg-muted">
+                <img src={instructionItem.videoUrl} alt="Preview" className="w-full h-full object-contain" />
+              </div>
+            )}
+            <div className="space-y-2">
+              <h4 className="font-bold uppercase tracking-widest text-xs text-muted-foreground">Execution</h4>
+              <p className="text-sm font-medium leading-relaxed">
+                Focus on progressive overload and proper range of motion for optimal {instructionItem?.target || 'muscle'} activation. Adjust the apparatus according to your individual biomechanics.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="w-full font-bold" onClick={() => setInstructionItem(null)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

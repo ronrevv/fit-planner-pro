@@ -3,7 +3,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, useLocation, useSearch } from "wouter";
 import { 
   ArrowLeft, Save, Loader2, Dumbbell, Plus, Trash2, Calendar, 
-  ChevronLeft, ChevronRight, Download, Share2, Copy, Check, CheckCircle
+  ChevronLeft, ChevronRight, Download, Share2, Copy, Check, CheckCircle,
+  PanelLeftClose, PanelLeftOpen
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -41,12 +42,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { generateWorkoutPDF, downloadPDF, shareToWhatsApp } from "@/lib/pdf-generator";
 import { cn } from "@/lib/utils";
-import { EXERCISES_LIST } from "@/lib/exercises";
+import { searchExercises, EXERCISE_DATABASE } from "@/lib/exercises";
+import { MEAL_DATABASE } from "@/lib/meals";
 import type { Client, WorkoutPlan, DayWorkout, Exercise } from "@shared/schema";
 
 const MONTH_NAMES = [
@@ -64,6 +67,7 @@ function generateEmptyDays(month: number, year: number): DayWorkout[] {
     day: i + 1,
     isRestDay: false,
     exercises: [],
+    meals: [],
     notes: "",
   }));
 }
@@ -85,22 +89,30 @@ function ExerciseForm({
     setOpen(false);
   };
 
+  const exerciseData = EXERCISE_DATABASE.find(e => e.name === exercise.name);
+
   return (
     <div className="flex flex-col gap-3 p-4 rounded-lg bg-muted/50 border border-border/50">
-      <div className="flex items-start justify-between gap-2">
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              role="combobox"
-              aria-expanded={open}
-              className="flex-1 justify-between font-medium"
-              data-testid={`input-exercise-name-${exercise.id}`}
-            >
-              {exercise.name || "Select exercise..."}
-              <Dumbbell className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-            </Button>
-          </PopoverTrigger>
+      <div className="flex items-start gap-4">
+        {exerciseData?.videoUrl && (
+          <div className="w-16 h-16 rounded overflow-hidden shrink-0 bg-background flex items-center justify-center border shadow-sm">
+            <img src={exerciseData.videoUrl} alt="preview" className="w-full h-full object-contain" />
+          </div>
+        )}
+        <div className="flex-1 flex items-start justify-between gap-2">
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={open}
+                className="flex-1 justify-between font-medium"
+                data-testid={`input-exercise-name-${exercise.id}`}
+              >
+                {exercise.name || "Select exercise..."}
+                <Dumbbell className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
           <PopoverContent className="w-[300px] p-0" align="start">
             <Command>
               <CommandInput
@@ -119,39 +131,36 @@ function ExerciseForm({
                     Use "{searchValue}"
                   </Button>
                 </CommandEmpty>
-                {EXERCISES_LIST.map((group) => (
-                  <CommandGroup key={group.category} heading={group.category}>
-                    {group.items.map((item) => (
-                      <CommandItem
-                        key={item}
-                        value={item}
-                        onSelect={handleSelect}
-                      >
-                        <CheckCircle
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            exercise.name === item ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                        {item}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
+                {searchExercises(searchValue).slice(0, 10).map((item) => (
+                  <CommandItem
+                    key={item.id}
+                    value={item.name}
+                    onSelect={handleSelect}
+                  >
+                    <CheckCircle
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        exercise.name === item.name ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    {item.name}
+                  </CommandItem>
                 ))}
               </CommandList>
             </Command>
           </PopoverContent>
         </Popover>
 
-        <Button 
-          variant="ghost" 
-          size="icon"
-          onClick={onRemove}
-          className="text-muted-foreground hover:text-destructive flex-shrink-0"
-          data-testid={`button-remove-exercise-${exercise.id}`}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={onRemove}
+            className="text-muted-foreground hover:text-destructive flex-shrink-0"
+            data-testid={`button-remove-exercise-${exercise.id}`}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
       <div className="grid grid-cols-3 gap-3">
         <div>
@@ -253,29 +262,44 @@ function DayEditor({
       </div>
 
       {!day.isRestDay && (
-        <>
-          <ScrollArea className="h-[400px] pr-4">
-            <div className="space-y-3">
-              {day.exercises.map((exercise, index) => (
-                <ExerciseForm
-                  key={exercise.id}
-                  exercise={exercise}
-                  onChange={(ex) => updateExercise(index, ex)}
-                  onRemove={() => removeExercise(index)}
-                />
-              ))}
+        <Tabs defaultValue="exercises" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="exercises">Exercises ({day.exercises.length})</TabsTrigger>
+            <TabsTrigger value="meals">Meals ({(day as any).meals?.length || 0})</TabsTrigger>
+          </TabsList>
+          <TabsContent value="exercises" className="space-y-4">
+            <ScrollArea className="h-[400px] pr-4">
+              <div className="space-y-3">
+                {day.exercises.map((exercise, index) => (
+                  <ExerciseForm
+                    key={exercise.id}
+                    exercise={exercise}
+                    onChange={(ex) => updateExercise(index, ex)}
+                    onRemove={() => removeExercise(index)}
+                  />
+                ))}
+              </div>
+            </ScrollArea>
+            <Button 
+              variant="outline" 
+              className="w-full" 
+              onClick={addExercise}
+              data-testid={`button-add-exercise-day-${day.day}`}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Exercise
+            </Button>
+          </TabsContent>
+          <TabsContent value="meals" className="space-y-4">
+            <div className="h-[400px] flex items-center justify-center text-muted-foreground border rounded-lg bg-muted/20">
+              <p>Meal assignments integrated with Diet library (Coming soon)</p>
             </div>
-          </ScrollArea>
-          <Button 
-            variant="outline" 
-            className="w-full" 
-            onClick={addExercise}
-            data-testid={`button-add-exercise-day-${day.day}`}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Exercise
-          </Button>
-        </>
+            <Button variant="outline" className="w-full" disabled>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Meal
+            </Button>
+          </TabsContent>
+        </Tabs>
       )}
 
       <div>
@@ -311,6 +335,7 @@ export default function WorkoutPlanBuilder() {
   const [copyDialogOpen, setCopyDialogOpen] = useState(false);
   const [copySourceDay, setCopySourceDay] = useState<number | null>(null);
   const [copyTargetDays, setCopyTargetDays] = useState<number[]>([]);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(true);
 
   const { data: clients = [] } = useQuery<Client[]>({
     queryKey: ['/api/clients'],
@@ -629,18 +654,26 @@ export default function WorkoutPlanBuilder() {
         </CardContent>
       </Card>
 
-      {/* Calendar + Day Editor */}
-      <div className="grid gap-6 lg:grid-cols-[1fr,400px]">
-        {/* Calendar View */}
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-primary" />
-                {MONTH_NAMES[selectedMonth - 1]} {selectedYear}
-              </CardTitle>
-              <div className="flex items-center gap-1">
-                <Button
+      {/* Calendar + Day Editor Layout */}
+      <div className={`grid gap-6 ${isCalendarOpen ? 'lg:grid-cols-[350px,1fr]' : 'lg:grid-cols-[60px,1fr]'} items-start transition-all duration-300`}>
+        {/* Calendar View (Left Sidebar) */}
+        {isCalendarOpen ? (
+          <Card className="animate-in fade-in slide-in-from-left-4 duration-300">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-primary" />
+                  <span className="truncate">{MONTH_NAMES[selectedMonth - 1]} {selectedYear}</span>
+                </CardTitle>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="icon" onClick={() => setIsCalendarOpen(false)}>
+                    <PanelLeftClose className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="flex items-center justify-between pt-2">
+                <div className="flex items-center gap-1">
+                  <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => {
@@ -731,6 +764,16 @@ export default function WorkoutPlanBuilder() {
             </div>
           </CardContent>
         </Card>
+        ) : (
+          <Card className="flex flex-col items-center py-4 bg-muted/30 animate-in fade-in slide-in-from-left-2 transition-all">
+            <Button variant="ghost" size="icon" onClick={() => setIsCalendarOpen(true)} className="mb-4 text-primary">
+              <PanelLeftOpen className="h-5 w-5" />
+            </Button>
+            <div className="writing-vertical-rl transform rotate-180 text-sm font-bold tracking-widest text-muted-foreground uppercase flex items-center justify-center h-full min-h-[300px]">
+              <span className="mb-4">{MONTH_NAMES[selectedMonth - 1]} {selectedYear}</span>
+            </div>
+          </Card>
+        )}
 
         {/* Day Editor */}
         <Card>
